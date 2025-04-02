@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+我们在next.js项目中，是可以热重载的，我们不需要反复运行npm run dev，我已经启动了。
