@@ -249,18 +249,18 @@ const ImageSplicingTool: React.FC = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-tool-primary bg-clip-text text-transparent">
-            Aitrainee 图片工具
+            Aitrainee
           </h1>
           <Button 
             variant="outline"
             className="text-tool-primary border border-tool-border/50 bg-black/40 hover:bg-tool-primary/10 hover:border-tool-primary transition-all"
             onClick={handleReset}
           >
-            新操作
+            一键重置
           </Button>
         </div>
         <p className="text-gray-400">
-          快速处理图片，一键复制粘贴，解决公众号海外图片失效问题。适用于公众号写作、内容创作等场景。
+          快速处理图片，一键复制粘贴，解决时讯图片拼接太慢问题。适用于公众号写作、内容创作等场景。
         </p>
       </div>
 
