@@ -246,28 +246,34 @@ const ImageSplicingTool: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center">
-          <h1 className="text-xl font-bold text-white mr-2">Images Tool</h1>
-          <span className="text-gray-400">高级图片拼接工具</span>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-tool-primary bg-clip-text text-transparent mr-2">Images Tool</h1>
+          <span className="text-tool-primary/80">高级图片拼接工具</span>
         </div>
         <Button 
           variant="outline"
-          className="text-white border-gray-700 hover:bg-gray-800"
+          className="text-tool-primary border border-tool-border/50 bg-black/40 hover:bg-tool-primary/10 hover:border-tool-primary transition-all"
           onClick={handleReset}
         >
           新操作
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-4">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "upload" | "edit")} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 bg-tool-secondary">
-              <TabsTrigger value="upload" className="text-white data-[state=active]:bg-tool-primary data-[state=active]:text-black">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1 space-y-5">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "upload" | "edit")} className="space-y-5">
+            <TabsList className="grid w-full grid-cols-2 bg-black border border-tool-border/30 p-1 rounded-lg">
+              <TabsTrigger 
+                value="upload" 
+                className="data-[state=inactive]:bg-transparent data-[state=inactive]:text-gray-400 data-[state=active]:bg-tool-primary data-[state=active]:text-black rounded-md font-medium"
+              >
                 上传图片
               </TabsTrigger>
-              <TabsTrigger value="edit" className="text-white data-[state=active]:bg-tool-primary data-[state=active]:text-black">
+              <TabsTrigger 
+                value="edit" 
+                className="data-[state=inactive]:bg-transparent data-[state=inactive]:text-gray-400 data-[state=active]:bg-tool-primary data-[state=active]:text-black rounded-md font-medium"
+              >
                 布局设置
               </TabsTrigger>
             </TabsList>
@@ -277,7 +283,7 @@ const ImageSplicingTool: React.FC = () => {
             </TabsContent>
             
             <TabsContent value="edit" className="mt-0 space-y-6">
-              <div className="bg-tool-secondary p-4 rounded-lg space-y-6">
+              <div className="bg-tool-surface p-5 rounded-lg space-y-6 border border-tool-border/30 shadow-lg">
                 <LayoutOptions 
                   selectedLayout={layout} 
                   onSelectLayout={handleLayoutChange} 
@@ -299,20 +305,20 @@ const ImageSplicingTool: React.FC = () => {
                   onQualityChange={setQuality}
                 />
                 
-                <div className="bg-tool-dark/40 rounded-lg p-3 text-xs space-y-1.5">
-                  <div className="flex justify-between text-gray-400">
+                <div className="bg-black/50 rounded-lg p-4 text-xs space-y-2 border border-tool-border/20">
+                  <div className="flex justify-between text-gray-300">
                     <span>当前设置:</span>
                     <span>{getLayoutDescription()}</span>
                   </div>
-                  <div className="flex justify-between text-gray-400">
+                  <div className="flex justify-between text-gray-300">
                     <span>间距:</span>
                     <span>{spacing}px</span>
                   </div>
-                  <div className="flex justify-between text-gray-400">
+                  <div className="flex justify-between text-gray-300">
                     <span>图片模式:</span>
                     <span>{autoSize ? '保持原尺寸' : '统一尺寸'}</span>
                   </div>
-                  <div className="flex justify-between text-gray-400">
+                  <div className="flex justify-between text-gray-300">
                     <span>格式:</span>
                     <span>{format.toUpperCase()} {format !== 'png' && `(${quality}%)`}</span>
                   </div>
@@ -330,15 +336,15 @@ const ImageSplicingTool: React.FC = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-2 flex flex-col h-full space-y-4">
-          <div className="bg-tool-secondary p-4 rounded-lg flex-grow">
+        <div className="lg:col-span-2 flex flex-col h-full space-y-5">
+          <div className="bg-tool-surface p-5 rounded-lg flex-grow border border-tool-border/30 shadow-lg relative">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-gray-400 text-sm">实时预览 ({images.length} 张图片)</h3>
+              <h3 className="text-tool-primary/90 text-sm font-medium">实时预览 ({images.length} 张图片)</h3>
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-white border-gray-700 hover:bg-gray-800 h-8"
+                  className="text-tool-primary border-tool-border/50 bg-black/60 hover:bg-tool-primary/10 hover:border-tool-primary h-8"
                   onClick={() => handleCreateSplicedImage(true)}
                   disabled={isProcessing || images.length === 0}
                 >
@@ -347,11 +353,11 @@ const ImageSplicingTool: React.FC = () => {
               </div>
             </div>
             
-            <div className="relative border border-gray-700 rounded-lg overflow-hidden mb-4">
+            <div className="relative border border-tool-border/50 rounded-lg overflow-hidden mb-4 shadow-[0_0_15px_rgba(0,230,230,0.1)]">
               {images.length > 0 ? (
                 <div 
                   ref={resultContainerRef}
-                  className="relative bg-[#1a1a1a] bg-grid-pattern h-[320px] flex items-center justify-center"
+                  className="relative bg-black/80 bg-grid-pattern h-[340px] flex items-center justify-center"
                 >
                   {resultImage.url ? (
                     <img 
@@ -367,18 +373,22 @@ const ImageSplicingTool: React.FC = () => {
                   )}
                   
                   {isProcessing && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <div className="w-8 h-8 border-2 border-tool-primary border-t-transparent rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
+                      <div className="w-10 h-10 border-2 border-tool-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center bg-tool-dark/30 border border-gray-700 rounded-lg p-8 h-[320px]">
-                  <p className="text-gray-500 mb-4">暂无图片，请先上传</p>
+                <div className="flex flex-col items-center justify-center bg-black/50 border border-tool-border/30 rounded-lg p-10 h-[340px]">
+                  <div className="w-16 h-16 mb-5 text-tool-primary/30 opacity-80">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-400 mb-4">暂无图片，请先上传</p>
                   <Button 
-                    variant="outline" 
                     onClick={() => setActiveTab("upload")}
-                    className="bg-transparent border-gray-700 text-gray-400 hover:text-white"
+                    className="bg-tool-primary/10 border border-tool-primary/30 text-tool-primary hover:bg-tool-primary/20 hover:border-tool-primary transition-all"
                   >
                     上传图片
                   </Button>
@@ -387,15 +397,15 @@ const ImageSplicingTool: React.FC = () => {
             </div>
             
             <div className="flex justify-between items-center">
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-400">
                 {resultImage.url && `格式: ${format.toUpperCase()}${format !== 'png' ? ` · 质量: ${quality}%` : ''}`}
               </div>
               
-              <div className="flex space-x-2">
+              <div className="flex space-x-3">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-white border-gray-700 hover:bg-gray-800 gap-1.5"
+                  className="text-tool-primary border-tool-border/50 bg-black/60 hover:bg-tool-primary/10 hover:border-tool-primary gap-1.5 transition-all"
                   onClick={handleCopyImage}
                   disabled={!resultImage.canvas || isProcessing}
                 >
@@ -406,7 +416,7 @@ const ImageSplicingTool: React.FC = () => {
                 <Button
                   variant="outline"
                   size="sm" 
-                  className="text-white border-gray-700 hover:bg-gray-800 gap-1.5"
+                  className="text-tool-primary border-tool-border/50 bg-black/60 hover:bg-tool-primary/10 hover:border-tool-primary gap-1.5 transition-all"
                   onClick={handleDownloadImage}
                   disabled={!resultImage.blob || isProcessing}
                 >
@@ -415,14 +425,20 @@ const ImageSplicingTool: React.FC = () => {
                 </Button>
               </div>
             </div>
+            
+            <div className="absolute top-0 right-0 w-[200px] h-[200px] rounded-full bg-tool-primary/5 blur-[80px] -z-10"></div>
           </div>
           
-          <div className="bg-tool-secondary p-3 rounded-lg">
-            <div className="text-xs text-gray-400 flex items-center justify-between">
-              <span>快捷键: </span>
+          <div className="bg-tool-surface p-4 rounded-lg border border-tool-border/30 shadow-lg">
+            <div className="text-xs text-gray-300 flex items-center justify-between">
+              <span className="text-tool-primary/80 font-medium">快捷键: </span>
               <div className="flex space-x-4">
-                <span><kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-gray-300">Ctrl+V</kbd> 粘贴图片</span>
-                <span><kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-gray-300">Ctrl+C</kbd> 复制结果</span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-border text-tool-primary text-xs">Ctrl+V</kbd> 粘贴图片
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-border text-tool-primary text-xs">Ctrl+C</kbd> 复制结果
+                </span>
               </div>
             </div>
           </div>
