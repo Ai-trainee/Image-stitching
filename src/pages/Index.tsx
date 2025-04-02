@@ -1,4 +1,7 @@
 import ImageSplicingTool from "@/components/ImageSplicingTool";
+import SocialLinks from "@/components/SocialLinks";
+import SocialDrawer from "@/components/SocialDrawer";
+import FloatingSocial from "@/components/FloatingSocial";
 
 const Index = () => {
   return (
@@ -26,8 +29,14 @@ const Index = () => {
         <ImageSplicingTool />
       </main>
       
-      <footer className="mt-16 container mx-auto p-4 border-t border-tool-border/20 text-center text-gray-500 text-sm">
-        <p className="flex items-center justify-center gap-4">
+      <footer className="mt-16 container mx-auto p-4 border-t border-tool-border/20 text-center">
+        {/* 社交媒体链接 */}
+        <div className="mb-6">
+          <h3 className="text-tool-primary mb-3 text-sm font-medium">关注我们</h3>
+          <SocialLinks className="mt-2" />
+        </div>
+        
+        <p className="flex items-center justify-center gap-4 text-gray-500 text-sm mt-6">
           <span className="flex items-center gap-1">
             <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-border text-tool-primary text-xs">Ctrl+V</kbd> 粘贴图片
           </span>
@@ -35,7 +44,17 @@ const Index = () => {
             <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-border text-tool-primary text-xs">Ctrl+C</kbd> 复制拼接结果
           </span>
         </p>
+        
+        <p className="text-xs text-gray-500 mt-4">
+          © {new Date().getFullYear()} ATrAINEE. 保留所有权利.
+        </p>
       </footer>
+      
+      {/* 社交媒体侧边抽屉 */}
+      <SocialDrawer />
+      
+      {/* 浮动社交媒体快捷入口 */}
+      <FloatingSocial />
     </div>
   );
 };
