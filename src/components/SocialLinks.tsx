@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 // 弹窗组件
@@ -87,14 +87,22 @@ const SocialLinks: React.FC<{ className?: string, variant?: 'horizontal' | 'vert
 }) => {
     const [activePopup, setActivePopup] = useState<string | null>(null);
 
+    // 添加标志来跟踪公众号链接点击后的状态
+    const [mpLinkClicked, setMpLinkClicked] = useState(false);
+
+    // 监听公众号链接点击后自动弹出二维码
+    useEffect(() => {
+        if (mpLinkClicked) {
+            setActivePopup('mp');
+            setMpLinkClicked(false);
+        }
+    }, [mpLinkClicked]);
+
     const socialLinks = [
         {
             name: '知识星球',
             type: 'text',
-            action: () => setActivePopup('zsxq'),
-            image: '/images/zsxq.svg',
-            link: 'https://t.zsxq.com/DoCG3',
-            description: '加入知识星球获取更多AI学习资源'
+            url: 'https://t.zsxq.com/DoCG3',
         },
         {
             name: '公众号',
@@ -103,10 +111,8 @@ const SocialLinks: React.FC<{ className?: string, variant?: 'horizontal' | 'vert
                     <path d="M9.5,4C5.36,4 2,6.69 2,10C2,11.89 3.08,13.56 4.78,14.66L4,17L6.5,15.5C7.39,15.81 8.37,16 9.41,16C9.15,15.37 9,14.7 9,14C9,10.69 12.13,8 16,8C16.19,8 16.38,8 16.56,8.03C15.54,5.69 12.78,4 9.5,4M6.5,6.5A1,1 0 0,1 7.5,7.5A1,1 0 0,1 6.5,8.5A1,1 0 0,1 5.5,7.5A1,1 0 0,1 6.5,6.5M11.5,6.5A1,1 0 0,1 12.5,7.5A1,1 0 0,1 11.5,8.5A1,1 0 0,1 10.5,7.5A1,1 0 0,1 11.5,6.5M16,9C13.24,9 11,11.24 11,14C11,16.76 13.24,19 16,19C16.67,19 17.31,18.85 17.88,18.58L20,20L19.23,17.88C20.32,16.92 21,15.54 21,14C21,11.24 18.76,9 16,9M14,11.5A1,1 0 0,1 15,12.5A1,1 0 0,1 14,13.5A1,1 0 0,1 13,12.5A1,1 0 0,1 14,11.5M18,11.5A1,1 0 0,1 19,12.5A1,1 0 0,1 18,13.5A1,1 0 0,1 17,12.5A1,1 0 0,1 18,11.5Z" />
                 </svg>
             ),
-            action: () => setActivePopup('mp'),
-            image: '/images/mp.svg',
-            link: 'https://mp.weixin.qq.com/s/eo5Ke_Plu_CBtlP6Fsn5tA',
-            description: '关注公众号获取最新AI资讯'
+            url: 'https://mp.weixin.qq.com/s/eo5Ke_Plu_CBtlP6Fsn5tA',
+            onClick: () => setMpLinkClicked(true)
         },
         {
             name: '订阅频道',
@@ -165,32 +171,18 @@ const SocialLinks: React.FC<{ className?: string, variant?: 'horizontal' | 'vert
         },
         {
             name: 'AI资源库',
-            icon: (
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1z" />
-                    <path d="M8 17h8v-2H8v2zm0-4h8v-2H8v2zm0-4h8V7H8v2z" />
-                </svg>
-            ),
+            type: 'text',
             url: 'https://pan.quark.cn/s/559a8707b1ab'
         },
         {
             name: 'AI账号升级',
-            icon: (
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                </svg>
-            ),
-            action: () => setActivePopup('aigpt'),
-            link: 'https://nf.video/DEBjE',
-            code: 'Aitrainee'
+            type: 'text',
+            url: 'https://nf.video/DEBjE',
+            extraInfo: '优惠码: Aitrainee'
         },
         {
             name: 'Cursor云开发',
-            icon: (
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
-                </svg>
-            ),
+            type: 'text',
             url: 'https://cloud.sealos.run/?uid=YSgbXmiema'
         }
     ];
@@ -204,74 +196,49 @@ const SocialLinks: React.FC<{ className?: string, variant?: 'horizontal' | 'vert
             )}>
                 {socialLinks.map((social) => (
                     <div key={social.name} className="relative group">
-                        {social.url ? (
+                        {social.type === 'text' ? (
+                            <a
+                                href={social.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-gray-400 hover:text-tool-primary transition-colors"
+                                title={social.extraInfo || social.name}
+                                onClick={social.onClick}
+                            >
+                                <div className="min-w-[32px] h-8 px-2 rounded-full bg-black border border-tool-border/40 flex items-center justify-center hover:border-tool-primary hover:bg-tool-primary/5 transition-all duration-300">
+                                    <div className="text-tool-primary text-xs">{social.name}</div>
+                                </div>
+                                {variant === 'vertical' && <span className="text-sm">{social.name}</span>}
+                                {social.extraInfo && variant === 'vertical' && (
+                                    <span className="text-xs text-tool-primary">{social.extraInfo}</span>
+                                )}
+                            </a>
+                        ) : (
                             <a
                                 href={social.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 text-gray-400 hover:text-tool-primary transition-colors"
                                 title={social.name}
+                                onClick={social.onClick}
                             >
                                 <div className="w-8 h-8 rounded-full bg-black border border-tool-border/40 flex items-center justify-center hover:border-tool-primary hover:bg-tool-primary/5 transition-all duration-300">
                                     <div className="text-tool-primary">{social.icon}</div>
                                 </div>
                                 {variant === 'vertical' && <span className="text-sm">{social.name}</span>}
                             </a>
-                        ) : social.type === 'text' ? (
-                            <button
-                                onClick={social.action}
-                                className="flex items-center gap-2 text-gray-400 hover:text-tool-primary transition-colors"
-                                title={social.name}
-                            >
-                                <div className="min-w-[32px] h-8 px-2 rounded-full bg-black border border-tool-border/40 flex items-center justify-center hover:border-tool-primary hover:bg-tool-primary/5 transition-all duration-300">
-                                    <div className="text-tool-primary text-xs">{social.name}</div>
-                                </div>
-                                {variant === 'vertical' && <span className="text-sm">{social.name}</span>}
-                            </button>
-                        ) : (
-                            <button
-                                onClick={social.action}
-                                className="flex items-center gap-2 text-gray-400 hover:text-tool-primary transition-colors"
-                                title={social.name}
-                            >
-                                <div className="w-8 h-8 rounded-full bg-black border border-tool-border/40 flex items-center justify-center hover:border-tool-primary hover:bg-tool-primary/5 transition-all duration-300">
-                                    <div className="text-tool-primary">{social.icon}</div>
-                                </div>
-                                {variant === 'vertical' && <span className="text-sm">{social.name}</span>}
-                            </button>
                         )}
                     </div>
                 ))}
             </div>
 
-            {/* 弹窗 */}
-            {activePopup === 'zsxq' && (
-                <QRPopup
-                    title="知识星球"
-                    image="/images/zsxq.svg"
-                    description="扫码加入知识星球，获取更多AI学习资源"
-                    link="https://t.zsxq.com/DoCG3"
-                    onClose={() => setActivePopup(null)}
-                />
-            )}
-
+            {/* 公众号弹窗 */}
             {activePopup === 'mp' && (
                 <QRPopup
                     title="ATrAINEE公众号"
                     image="/images/mp.svg"
                     description="扫码关注公众号，获取最新AI资讯"
                     link="https://mp.weixin.qq.com/s/eo5Ke_Plu_CBtlP6Fsn5tA"
-                    onClose={() => setActivePopup(null)}
-                />
-            )}
-
-            {activePopup === 'aigpt' && (
-                <QRPopup
-                    title="AI账号升级"
-                    image="/images/ai-upgrade.svg"
-                    description="GPT/Claude等AI账号升级"
-                    link="https://nf.video/DEBjE"
-                    code="Aitrainee"
                     onClose={() => setActivePopup(null)}
                 />
             )}
