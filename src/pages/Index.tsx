@@ -1,5 +1,5 @@
 import ImageSplicingTool from "@/components/ImageSplicingTool";
-import SocialLinks from "@/components/SocialLinks";
+import SocialLinks, { textLinks } from "@/components/SocialLinks";
 import SocialDrawer from "@/components/SocialDrawer";
 import FloatingSocial from "@/components/FloatingSocial";
 
@@ -19,6 +19,26 @@ const Index = () => {
             </div>
             <h1 className="text-xl font-bold bg-gradient-to-r from-white to-tool-primary bg-clip-text text-transparent">ImagesTool</h1>
           </div>
+          
+          {/* 顶部导航链接 */}
+          <div className="hidden md:flex items-center space-x-4">
+            {textLinks.map((link) => (
+              <a
+                key={link.name}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-300 hover:text-tool-primary transition-colors"
+                title={link.extraInfo || link.name}
+              >
+                {link.name}
+                {link.extraInfo && (
+                  <span className="ml-1 text-xs text-tool-primary">*</span>
+                )}
+              </a>
+            ))}
+          </div>
+          
           <div className="text-sm text-tool-primary/80 font-medium">
             专业图片拼接工具
           </div>
@@ -33,7 +53,7 @@ const Index = () => {
         {/* 社交媒体链接 */}
         <div className="mb-6">
           <h3 className="text-tool-primary mb-3 text-sm font-medium">关注我们</h3>
-          <SocialLinks className="mt-2" />
+          <SocialLinks className="mt-2" showTextLinks={false} />
         </div>
         
         <p className="flex items-center justify-center gap-4 text-gray-500 text-sm mt-6">

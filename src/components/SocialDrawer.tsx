@@ -23,7 +23,7 @@ const SocialDrawer: React.FC = () => {
       >
         <div className="mb-3">
           <h3 className="text-tool-primary text-sm font-medium mb-3">关注我们</h3>
-          <SocialLinks variant="vertical" />
+          <SocialLinks variant="vertical" showTextLinks={false} />
         </div>
       </div>
 
