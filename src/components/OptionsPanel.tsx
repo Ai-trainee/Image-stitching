@@ -10,6 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 interface OptionsPanelProps {
   rows: number;
@@ -26,6 +27,22 @@ interface OptionsPanelProps {
   onFormatChange: (format: string) => void;
   onQualityChange: (quality: number) => void;
 }
+
+// 公众号常用尺寸提示
+const WeChatSizeTooltip = () => (
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="cursor-help">
+          <Info size={12} className="text-tool-primary ml-1" />
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        <p className="text-xs">公众号建议:<br/>- 文章宽度: 900px<br/>- 封面图: 900×383px</p>
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
 
 const OptionsPanel: React.FC<OptionsPanelProps> = ({
   rows,
@@ -44,8 +61,12 @@ const OptionsPanel: React.FC<OptionsPanelProps> = ({
 }) => {
   return (
     <div className="space-y-5">
+      {/* 图片模式 */}
       <div>
-        <h3 className="text-tool-primary font-medium text-sm mb-4">图片模式</h3>
+        <div className="flex items-center mb-4">
+          <h3 className="text-tool-primary font-medium text-sm">图片模式</h3>
+          <WeChatSizeTooltip />
+        </div>
         <div className="flex gap-2">
           <div 
             className={`flex-1 rounded-md cursor-pointer transition-all duration-300 
@@ -83,11 +104,17 @@ const OptionsPanel: React.FC<OptionsPanelProps> = ({
         </div>
       </div>
 
+      {/* 布局选项 */}
       {layout !== "single" && (
         <div className="grid grid-cols-2 gap-3">
           {layout === "grid" && (
             <div>
-              <div className="text-gray-400 text-sm mb-2">行数</div>
+              <div className="text-gray-400 text-sm mb-2 flex items-center">
+                行数
+                {layout === "grid" && (
+                  <div className="text-xs text-tool-primary ml-1.5">{rows}行</div>
+                )}
+              </div>
               <Select
                 value={rows.toString()}
                 onValueChange={(value) => onRowsChange(parseInt(value))}
@@ -108,7 +135,12 @@ const OptionsPanel: React.FC<OptionsPanelProps> = ({
           
           {layout === "grid" && (
             <div>
-              <div className="text-gray-400 text-sm mb-2">列数</div>
+              <div className="text-gray-400 text-sm mb-2 flex items-center">
+                列数
+                {layout === "grid" && (
+                  <div className="text-xs text-tool-primary ml-1.5">{columns}列</div>
+                )}
+              </div>
               <Select
                 value={columns.toString()}
                 onValueChange={(value) => onColumnsChange(parseInt(value))}
@@ -128,7 +160,10 @@ const OptionsPanel: React.FC<OptionsPanelProps> = ({
           )}
           
           <div className={layout === "grid" ? "col-span-2" : "col-span-2"}>
-            <div className="text-gray-400 text-sm mb-2">间距</div>
+            <div className="text-gray-400 text-sm mb-2 flex items-center">
+              间距
+              <div className="text-xs text-tool-primary ml-1.5">{spacing}px</div>
+            </div>
             <Select
               value={spacing.toString()}
               onValueChange={(value) => onSpacingChange(parseInt(value))}
@@ -148,30 +183,39 @@ const OptionsPanel: React.FC<OptionsPanelProps> = ({
         </div>
       )}
 
-      <div>
-        <div className="text-gray-400 text-sm mb-2">输出格式</div>
-        <Select
-          value={format}
-          onValueChange={onFormatChange}
-        >
-          <SelectTrigger className="bg-tool-secondary border-gray-700 text-white h-9">
-            <SelectValue placeholder="png" />
-          </SelectTrigger>
-          <SelectContent className="bg-tool-secondary border-gray-700 text-white">
-            <SelectItem value="png">PNG (无损)</SelectItem>
-            <SelectItem value="jpeg">JPEG (有损)</SelectItem>
-            <SelectItem value="webp">WebP (高压缩)</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* 输出格式 */}
+      <div className="space-y-3">
+        <div className="text-gray-400 text-sm flex items-center">
+          输出格式
+          <div className="text-xs text-tool-primary ml-1.5">{format.toUpperCase()}</div>
+        </div>
+        
+        <div className="flex gap-2">
+          {["png", "jpeg", "webp"].map((fmt) => (
+            <div
+              key={fmt}
+              className={`flex-1 rounded-md cursor-pointer transition-all duration-200 
+                          ${format === fmt ? 'bg-tool-primary/30 border-2 border-tool-primary text-white' : 'bg-black/40 border border-tool-border/40 text-gray-300'} 
+                          py-1.5 px-2 text-center text-xs hover:border-tool-primary/70 hover:bg-tool-primary/10`}
+              onClick={() => onFormatChange(fmt)}
+            >
+              <div className="font-medium">{fmt.toUpperCase()}</div>
+              <div className="text-[9px] text-gray-400 mt-0.5">
+                {fmt === 'png' ? '无损' : fmt === 'jpeg' ? '有损' : '高压缩'}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {format === "jpeg" || format === "webp" ? (
+      {/* 质量滑块 - 仅对有损格式显示 */}
+      {format !== "png" && (
         <div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center mb-2">
             <span className="text-gray-400 text-sm">画质</span>
-            <span className="text-gray-400 text-sm">{quality}%</span>
+            <span className="text-xs bg-tool-primary/20 text-tool-primary px-1.5 py-0.5 rounded">{quality}%</span>
           </div>
-          <div className="mt-2">
+          <div className="px-1">
             <Slider
               value={[quality]}
               min={10}
@@ -180,9 +224,27 @@ const OptionsPanel: React.FC<OptionsPanelProps> = ({
               onValueChange={(value) => onQualityChange(value[0])}
               className="bg-transparent"
             />
+            <div className="flex justify-between text-[10px] text-gray-500 mt-1 px-1">
+              <span>低画质</span>
+              <span>高画质</span>
+            </div>
           </div>
         </div>
-      ) : null}
+      )}
+
+      {/* 公众号优化提示 */}
+      {!autoSize && (
+        <div className="bg-tool-primary/10 rounded-md p-2 text-xs border border-tool-primary/30">
+          <div className="flex items-center">
+            <div className="w-2 h-2 rounded-full bg-tool-primary mr-1.5"></div>
+            <span className="text-tool-primary font-medium">公众号最佳尺寸提示</span>
+          </div>
+          <div className="mt-1 text-gray-300 pl-3.5">
+            <div>• 文章正文图片: 宽度900px</div>
+            <div>• 封面图片: 900×383px</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

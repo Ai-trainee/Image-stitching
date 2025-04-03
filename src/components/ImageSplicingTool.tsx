@@ -2,34 +2,149 @@ import React, { useState, useEffect, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Download, Check } from "lucide-react";
+import { Copy, Download, Check, Upload, Zap, Info, RefreshCw } from "lucide-react";
 import LayoutOptions from "@/components/LayoutOptions";
 import OptionsPanel from "@/components/OptionsPanel";
 import ImageUploader from "@/components/ImageUploader";
 import ImagePreview from "@/components/ImagePreview";
 import { createSplicedImage, downloadImage, copyImageToClipboard } from "@/lib/image-processing";
 import { isImageFile } from "@/lib/image-types";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// 默认设置
+const DEFAULT_SETTINGS = {
+  layout: "row" as "single" | "row" | "grid",
+  rows: 1,
+  columns: 1,
+  spacing: 0,
+  autoSize: true,
+  format: "png" as string,
+  quality: 90,
+  autoSwitchToPreview: true,
+  autoProcessOnUpload: true
+};
+
+// 公众号预设
+const WECHAT_PRESETS = [
+  {
+    name: "公众号封面",
+    description: "900×383px 封面图片",
+    settings: {
+      layout: "single" as "single" | "row" | "grid",
+      autoSize: false,
+      format: "jpeg",
+      width: 900,
+      height: 383
+    }
+  },
+  {
+    name: "公众号正文",
+    description: "宽度900px，自适应高度",
+    settings: {
+      layout: "row" as "single" | "row" | "grid",
+      autoSize: false,
+      format: "jpeg",
+      width: 900
+    }
+  },
+  {
+    name: "快速拼接",
+    description: "保持原始尺寸横排拼接",
+    settings: {
+      layout: "row" as "single" | "row" | "grid",
+      autoSize: true,
+      format: "png"
+    }
+  }
+];
+
+// 检查图片是否适合公众号
+const isIdealForWechat = (dimensions: {width: number, height: number}) => {
+  // 公众号推荐宽度是900px
+  return dimensions.width === 900;
+};
 
 const ImageSplicingTool: React.FC = () => {
   const { toast } = useToast();
-  const [layout, setLayout] = useState<"single" | "row" | "grid">("row");
-  const [rows, setRows] = useState(1);
-  const [columns, setColumns] = useState(1);
-  const [spacing, setSpacing] = useState(0);
-  const [autoSize, setAutoSize] = useState(true);
-  const [format, setFormat] = useState<string>("png");
-  const [quality, setQuality] = useState(90);
+  const [layout, setLayout] = useState<"single" | "row" | "grid">(DEFAULT_SETTINGS.layout);
+  const [rows, setRows] = useState(DEFAULT_SETTINGS.rows);
+  const [columns, setColumns] = useState(DEFAULT_SETTINGS.columns);
+  const [spacing, setSpacing] = useState(DEFAULT_SETTINGS.spacing);
+  const [autoSize, setAutoSize] = useState(DEFAULT_SETTINGS.autoSize);
+  const [format, setFormat] = useState<string>(DEFAULT_SETTINGS.format);
+  const [quality, setQuality] = useState(DEFAULT_SETTINGS.quality);
   const [images, setImages] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultImage, setResultImage] = useState<{
     url: string | null;
     blob: Blob | null;
     canvas: HTMLCanvasElement | null;
+    dimensions?: { width: number; height: number };
   }>({ url: null, blob: null, canvas: null });
   const [activeTab, setActiveTab] = useState<"upload" | "edit">("upload");
   const [isCopied, setIsCopied] = useState(false);
+  const [autoSwitchToPreview, setAutoSwitchToPreview] = useState(DEFAULT_SETTINGS.autoSwitchToPreview);
+  const [autoProcessOnUpload, setAutoProcessOnUpload] = useState(DEFAULT_SETTINGS.autoProcessOnUpload);
   const resultContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 从localStorage加载设置
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('imageToolSettings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        setLayout(settings.layout || DEFAULT_SETTINGS.layout);
+        setRows(settings.rows || DEFAULT_SETTINGS.rows);
+        setColumns(settings.columns || DEFAULT_SETTINGS.columns);
+        setSpacing(settings.spacing || DEFAULT_SETTINGS.spacing);
+        setAutoSize(settings.autoSize !== undefined ? settings.autoSize : DEFAULT_SETTINGS.autoSize);
+        setFormat(settings.format || DEFAULT_SETTINGS.format);
+        setQuality(settings.quality || DEFAULT_SETTINGS.quality);
+        setAutoSwitchToPreview(settings.autoSwitchToPreview !== undefined ? 
+          settings.autoSwitchToPreview : DEFAULT_SETTINGS.autoSwitchToPreview);
+        setAutoProcessOnUpload(settings.autoProcessOnUpload !== undefined ? 
+          settings.autoProcessOnUpload : DEFAULT_SETTINGS.autoProcessOnUpload);
+      } catch (e) {
+        console.error("加载保存的设置时出错", e);
+      }
+    }
+  }, []);
+
+  // 保存设置到localStorage
+  useEffect(() => {
+    const currentSettings = {
+      layout,
+      rows,
+      columns,
+      spacing,
+      autoSize,
+      format,
+      quality,
+      autoSwitchToPreview,
+      autoProcessOnUpload
+    };
+    localStorage.setItem('imageToolSettings', JSON.stringify(currentSettings));
+  }, [layout, rows, columns, spacing, autoSize, format, quality, autoSwitchToPreview, autoProcessOnUpload]);
+
+  // 应用预设
+  const applyPreset = (preset: typeof WECHAT_PRESETS[0]) => {
+    const { settings } = preset;
+    setLayout(settings.layout);
+    setAutoSize(settings.autoSize);
+    setFormat(settings.format);
+    
+    // 如果要处理其他属性，这里可以添加
+
+    toast({
+      description: `已应用预设：${preset.name}`,
+      className: "bg-tool-primary/20 border border-tool-primary text-white font-medium"
+    });
+
+    if (images.length > 0) {
+      handleCreateSplicedImage(false);
+    }
+  };
 
   const handleUploadButtonClick = () => {
     setActiveTab("upload");
@@ -38,6 +153,39 @@ const ImageSplicingTool: React.FC = () => {
         fileInputRef.current.click();
       }
     }, 50);
+  };
+
+  // 快速上传并处理
+  const handleQuickUpload = () => {
+    handleUploadButtonClick();
+    // 后续处理由handleImagesSelected完成
+  };
+
+  // 应用公众号最佳实践预设
+  const handleWechatOptimize = () => {
+    applyPreset(WECHAT_PRESETS[1]); // 应用公众号正文预设
+  };
+
+  // 一键复制当前图片
+  const handleQuickCopy = () => {
+    if (resultImage.canvas) {
+      handleCopyImage();
+    } else if (images.length > 0) {
+      handleCreateSplicedImage(true).then(() => {
+        // 因为状态更新是异步的，我们需要延迟执行复制操作
+        setTimeout(() => {
+          if (resultImage.canvas) {
+            handleCopyImage();
+          }
+        }, 500);
+      });
+    } else {
+      toast({
+        title: "未找到图片",
+        description: "请先上传图片",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleReorderImages = (newOrder: File[]) => {
@@ -57,8 +205,12 @@ const ImageSplicingTool: React.FC = () => {
             description: `已添加 ${imageFiles.length} 张图片从剪贴板`,
           });
 
-          if (activeTab === "upload" && images.length === 0) {
+          if (autoSwitchToPreview && activeTab === "upload") {
             setActiveTab("edit");
+          }
+
+          if (autoProcessOnUpload) {
+            setTimeout(() => handleCreateSplicedImage(false), 100);
           }
         }
       }
@@ -77,7 +229,7 @@ const ImageSplicingTool: React.FC = () => {
       window.removeEventListener("paste", handlePaste);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [toast, images, activeTab, resultImage.canvas]);
+  }, [toast, images, activeTab, autoSwitchToPreview, autoProcessOnUpload, resultImage.canvas]);
 
   useEffect(() => {
     if (layout === "single" && images.length > 1) {
@@ -119,8 +271,14 @@ const ImageSplicingTool: React.FC = () => {
       description: `已添加 ${imageFiles.length} 张图片`,
     });
 
-    if (images.length === 0 && activeTab === "upload") {
+    // 自动切换到编辑标签
+    if (autoSwitchToPreview && (activeTab === "upload" || images.length === 0)) {
       setActiveTab("edit");
+    }
+
+    // 自动处理图片
+    if (autoProcessOnUpload) {
+      setTimeout(() => handleCreateSplicedImage(false), 100);
     }
   };
 
@@ -163,7 +321,20 @@ const ImageSplicingTool: React.FC = () => {
       const { blob, canvas } = await createSplicedImage(images, config);
       const url = URL.createObjectURL(blob);
 
-      setResultImage({ url, blob, canvas });
+      // 获取图像尺寸
+      const img = new Image();
+      img.onload = () => {
+        setResultImage({ 
+          url, 
+          blob, 
+          canvas,
+          dimensions: {
+            width: img.width,
+            height: img.height
+          }
+        });
+      };
+      img.src = url;
 
       if (showNotification) {
         toast({
@@ -180,6 +351,9 @@ const ImageSplicingTool: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
+    
+    // 返回Promise以支持链式操作
+    return Promise.resolve();
   };
 
   const handleDownloadImage = () => {
@@ -223,13 +397,13 @@ const ImageSplicingTool: React.FC = () => {
 
   const handleReset = () => {
     setImages([]);
-    setLayout("row");
-    setRows(1);
-    setColumns(1);
-    setSpacing(0);
-    setAutoSize(true);
-    setFormat("png");
-    setQuality(90);
+    setLayout(DEFAULT_SETTINGS.layout);
+    setRows(DEFAULT_SETTINGS.rows);
+    setColumns(DEFAULT_SETTINGS.columns);
+    setSpacing(DEFAULT_SETTINGS.spacing);
+    setAutoSize(DEFAULT_SETTINGS.autoSize);
+    setFormat(DEFAULT_SETTINGS.format);
+    setQuality(DEFAULT_SETTINGS.quality);
     setResultImage({ url: null, blob: null, canvas: null });
     setActiveTab("upload");
 
@@ -252,9 +426,18 @@ const ImageSplicingTool: React.FC = () => {
     }
   };
 
+  // 切换自动设置
+  const toggleAutoSettings = (setting: 'autoSwitchToPreview' | 'autoProcessOnUpload') => {
+    if (setting === 'autoSwitchToPreview') {
+      setAutoSwitchToPreview(!autoSwitchToPreview);
+    } else {
+      setAutoProcessOnUpload(!autoProcessOnUpload);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 max-w-6xl">
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-tool-primary bg-clip-text text-transparent">
             Aitrainee
@@ -270,6 +453,97 @@ const ImageSplicingTool: React.FC = () => {
         <p className="text-gray-400">
           快速处理图片，一键复制粘贴，解决时讯图片拼接太慢问题。适用于公众号写作、内容创作等场景。
         </p>
+      </div>
+
+      {/* 快捷操作栏 */}
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-white bg-tool-primary/40 hover:bg-tool-primary/60 gap-1.5 transition-all"
+          onClick={handleQuickUpload}
+        >
+          <Upload size={14} />
+          上传并拼接
+        </Button>
+        
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-white bg-tool-primary/40 hover:bg-tool-primary/60 gap-1.5 transition-all"
+          onClick={handleWechatOptimize}
+        >
+          <Zap size={14} />
+          公众号优化
+        </Button>
+        
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-white bg-tool-primary/40 hover:bg-tool-primary/60 gap-1.5 transition-all"
+          onClick={handleQuickCopy}
+          disabled={!resultImage.canvas && images.length === 0}
+        >
+          <Copy size={14} />
+          一键复制
+        </Button>
+        
+        <div className="ml-auto flex items-center gap-3">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 cursor-pointer text-xs" 
+                     onClick={() => toggleAutoSettings('autoSwitchToPreview')}>
+                  <div className={`w-3 h-3 rounded-full ${autoSwitchToPreview ? 'bg-tool-primary' : 'bg-gray-600'}`}></div>
+                  <span className="text-gray-400">自动预览</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>上传后自动切换到预览</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 cursor-pointer text-xs"
+                     onClick={() => toggleAutoSettings('autoProcessOnUpload')}>
+                  <div className={`w-3 h-3 rounded-full ${autoProcessOnUpload ? 'bg-tool-primary' : 'bg-gray-600'}`}></div>
+                  <span className="text-gray-400">自动处理</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>上传后自动处理图片</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info size={14} className="text-gray-500" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>公众号图片最佳宽度为900px<br/>封面图推荐比例为900:383</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
+
+      {/* 公众号预设选项 */}
+      <div className="grid grid-cols-3 gap-2 mb-6">
+        {WECHAT_PRESETS.map((preset, index) => (
+          <div 
+            key={index}
+            className="bg-black/50 border border-tool-border/40 rounded-md p-2 cursor-pointer hover:border-tool-primary hover:bg-tool-primary/10 transition-all"
+            onClick={() => applyPreset(preset)}
+          >
+            <div className="text-white text-sm font-medium">{preset.name}</div>
+            <div className="text-gray-400 text-xs">{preset.description}</div>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -363,6 +637,7 @@ const ImageSplicingTool: React.FC = () => {
                   onClick={() => handleCreateSplicedImage(true)}
                   disabled={isProcessing || images.length === 0}
                 >
+                  <RefreshCw size={14} className="mr-1.5" />
                   {isProcessing ? "处理中..." : "刷新预览"}
                 </Button>
               </div>
@@ -375,11 +650,23 @@ const ImageSplicingTool: React.FC = () => {
                   className="relative bg-black/80 bg-grid-pattern h-[340px] flex items-center justify-center"
                 >
                   {resultImage.url ? (
-                    <img
-                      src={resultImage.url}
-                      alt="拼接结果"
-                      className="max-w-full max-h-full object-contain"
-                    />
+                    <>
+                      <img
+                        src={resultImage.url}
+                        alt="拼接结果"
+                        className="max-w-full max-h-full object-contain"
+                      />
+                      {resultImage.dimensions && (
+                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1.5">
+                          <span>{resultImage.dimensions.width} × {resultImage.dimensions.height}px</span>
+                          {isIdealForWechat(resultImage.dimensions) && (
+                            <span className="text-green-400 flex items-center">
+                              <Check size={12} className="mr-0.5" /> 适合公众号
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="flex flex-col items-center justify-center text-gray-500">
                       <div className="w-8 h-8 border-2 border-tool-primary border-t-transparent rounded-full animate-spin mb-2"></div>
@@ -445,9 +732,9 @@ const ImageSplicingTool: React.FC = () => {
           </div>
 
           <div className="bg-tool-surface p-4 rounded-lg border border-tool-border/30 shadow-lg">
-            <div className="text-xs text-gray-300 flex items-center justify-between">
+            <div className="text-xs text-gray-300 flex flex-wrap items-center justify-between gap-y-2">
               <span className="text-tool-primary/80 font-medium">快捷键: </span>
-              <div className="flex space-x-4">
+              <div className="flex flex-wrap gap-4">
                 <span className="flex items-center gap-1">
                   <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-border text-tool-primary text-xs">Ctrl+V</kbd> 粘贴图片
                 </span>
