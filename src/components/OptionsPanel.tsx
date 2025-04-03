@@ -1,9 +1,15 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface OptionsPanelProps {
   rows: number;
@@ -37,29 +43,29 @@ const OptionsPanel: React.FC<OptionsPanelProps> = ({
   onQualityChange,
 }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <h3 className="text-gray-400 text-sm mb-2">图片模式</h3>
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            className={cn("rounded-md flex-1 h-9", { "bg-tool-primary text-black": autoSize })}
+        <h3 className="text-tool-primary font-medium text-sm mb-4">图片模式</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div 
+            className={`rounded-md cursor-pointer transition-all duration-300 
+                        ${autoSize ? 'bg-tool-primary/30 border-2 border-tool-primary text-white font-medium' : 'bg-black/40 border border-tool-border/40 text-gray-300'} 
+                        p-3 text-center text-sm hover:border-tool-primary/70 hover:bg-tool-primary/10`}
             onClick={() => onAutoSizeChange(true)}
           >
-            <span className={autoSize ? "text-black" : "text-gray-300"}>保持原尺寸</span>
-          </Button>
-          <Button
-            variant="outline"
-            className={cn("rounded-md flex-1 h-9", { "bg-tool-primary text-black": !autoSize })}
+            保持原尺寸
+            <div className="text-[10px] text-gray-400 mt-1">保持原始图片的尺寸，不缩放</div>
+          </div>
+          
+          <div 
+            className={`rounded-md cursor-pointer transition-all duration-300 
+                        ${!autoSize ? 'bg-tool-primary/30 border-2 border-tool-primary text-white font-medium' : 'bg-black/40 border border-tool-border/40 text-gray-300'} 
+                        p-3 text-center text-sm hover:border-tool-primary/70 hover:bg-tool-primary/10`}
             onClick={() => onAutoSizeChange(false)}
           >
-            <span className={!autoSize ? "text-black" : "text-gray-300"}>统一尺寸</span>
-          </Button>
-        </div>
-        <div className="mt-1 text-xs text-gray-500">
-          {autoSize 
-            ? "保持每张图片原始尺寸，无缝拼接" 
-            : "所有图片统一为第一张图片的尺寸"}
+            统一尺寸
+            <div className="text-[10px] text-gray-400 mt-1">调整所有图片为相同尺寸</div>
+          </div>
         </div>
       </div>
 

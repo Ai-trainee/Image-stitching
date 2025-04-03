@@ -102,16 +102,8 @@ const textLinks = [
     },
     {
         name: 'Cursor云开发',
-        url: 'https://mp.weixin.qq.com/s?__biz=MzkyMzY1NTM0Mw==&mid=2247496572&idx=1&sn=757d995b9ee8adf814d7b1de2f50b8cd&scene=19#wechat_redirect',
-        secondUrl: 'https://cloud.sealos.run/?uid=YSgbXmiema',
-        onClick: (e: React.MouseEvent) => {
-            e.preventDefault();
-            // 打开第一个链接
-            window.open('https://mp.weixin.qq.com/s?__biz=MzkyMzY1NTM0Mw==&mid=2247496572&idx=1&sn=757d995b9ee8adf814d7b1de2f50b8cd&scene=19#wechat_redirect', '_blank');
-            // 打开第二个链接
-            window.open('https://cloud.sealos.run/?uid=YSgbXmiema', '_blank');
-            return false;
-        }
+        url: 'https://cloud.sealos.run/?uid=YSgbXmiema',
+        onClick: null  // 移除onClick事件
     }
 ];
 

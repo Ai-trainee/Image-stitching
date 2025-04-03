@@ -223,6 +223,7 @@ const ImageSplicingTool: React.FC = () => {
 
     toast({
       description: "所有图片和设置已重置",
+      className: "bg-tool-primary/20 border border-tool-primary text-white font-medium"
     });
   };
 
@@ -404,7 +405,7 @@ const ImageSplicingTool: React.FC = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-white border-tool-primary/50 bg-tool-primary/30 hover:bg-tool-primary/50 hover:border-tool-primary gap-1.5 transition-all shadow-md"
+                  className="text-white border-tool-primary bg-tool-primary/40 hover:bg-tool-primary/60 hover:border-tool-primary gap-1.5 transition-all shadow-md"
                   onClick={handleCopyImage}
                   disabled={!resultImage.canvas || isProcessing}
                 >
@@ -415,7 +416,7 @@ const ImageSplicingTool: React.FC = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-white border-tool-primary/50 bg-tool-primary/30 hover:bg-tool-primary/50 hover:border-tool-primary gap-1.5 transition-all shadow-md"
+                  className="text-white border-tool-primary bg-tool-primary/40 hover:bg-tool-primary/60 hover:border-tool-primary gap-1.5 transition-all shadow-md"
                   onClick={handleDownloadImage}
                   disabled={!resultImage.blob || isProcessing}
                 >
