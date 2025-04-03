@@ -46,25 +46,39 @@ const OptionsPanel: React.FC<OptionsPanelProps> = ({
     <div className="space-y-5">
       <div>
         <h3 className="text-tool-primary font-medium text-sm mb-4">图片模式</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex gap-2">
           <div 
-            className={`rounded-md cursor-pointer transition-all duration-300 
+            className={`flex-1 rounded-md cursor-pointer transition-all duration-300 
                         ${autoSize ? 'bg-tool-primary/30 border-2 border-tool-primary text-white font-medium' : 'bg-black/40 border border-tool-border/40 text-gray-300'} 
-                        p-3 text-center text-sm hover:border-tool-primary/70 hover:bg-tool-primary/10`}
+                        p-2 text-center text-sm hover:border-tool-primary/70 hover:bg-tool-primary/10`}
             onClick={() => onAutoSizeChange(true)}
           >
-            保持原尺寸
-            <div className="text-[10px] text-gray-400 mt-1">保持原始图片的尺寸，不缩放</div>
+            <div className="flex items-center justify-center">
+              <span className="mr-1">保持原尺寸</span>
+              {autoSize && (
+                <svg viewBox="0 0 24 24" width="14" height="14" className="fill-tool-primary ml-1">
+                  <path d="M9 16.17l-4.17-4.17-1.41 1.41 5.58 5.59 12-12-1.41-1.41z" />
+                </svg>
+              )}
+            </div>
+            <div className="text-[10px] text-gray-400 mt-0.5">原始尺寸不缩放</div>
           </div>
           
           <div 
-            className={`rounded-md cursor-pointer transition-all duration-300 
+            className={`flex-1 rounded-md cursor-pointer transition-all duration-300 
                         ${!autoSize ? 'bg-tool-primary/30 border-2 border-tool-primary text-white font-medium' : 'bg-black/40 border border-tool-border/40 text-gray-300'} 
-                        p-3 text-center text-sm hover:border-tool-primary/70 hover:bg-tool-primary/10`}
+                        p-2 text-center text-sm hover:border-tool-primary/70 hover:bg-tool-primary/10`}
             onClick={() => onAutoSizeChange(false)}
           >
-            统一尺寸
-            <div className="text-[10px] text-gray-400 mt-1">调整所有图片为相同尺寸</div>
+            <div className="flex items-center justify-center">
+              <span className="mr-1">统一尺寸</span>
+              {!autoSize && (
+                <svg viewBox="0 0 24 24" width="14" height="14" className="fill-tool-primary ml-1">
+                  <path d="M9 16.17l-4.17-4.17-1.41 1.41 5.58 5.59 12-12-1.41-1.41z" />
+                </svg>
+              )}
+            </div>
+            <div className="text-[10px] text-gray-400 mt-0.5">调整为相同尺寸</div>
           </div>
         </div>
       </div>

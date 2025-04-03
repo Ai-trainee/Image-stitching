@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, forwardRef, useImperativeHandle } from "react";
 import { Image, ClipboardPaste } from "lucide-react";
 import { IMAGE_EXTENSIONS_DISPLAY } from "@/lib/image-types";
 
@@ -6,9 +6,13 @@ interface ImageUploaderProps {
   onImagesSelected: (files: File[]) => void;
 }
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesSelected }) => {
+// 使用forwardRef包装组件以支持ref转发
+const ImageUploader = forwardRef<HTMLInputElement, ImageUploaderProps>(({ onImagesSelected }, ref) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // 将内部的fileInputRef暴露给父组件
+  useImperativeHandle(ref, () => fileInputRef.current as HTMLInputElement);
 
   const handleFilesSelected = (files: FileList) => {
     const imageFiles = Array.from(files);
@@ -102,6 +106,9 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesSelected }) => {
       <div className="absolute -inset-1 bg-gradient-to-r from-tool-primary/0 via-tool-primary/20 to-tool-primary/0 blur-sm opacity-0 group-hover:opacity-100 animate-pulse transition-opacity duration-700"></div>
     </div>
   );
-};
+});
+
+// 添加显示名称，有助于调试
+ImageUploader.displayName = "ImageUploader";
 
 export default ImageUploader;

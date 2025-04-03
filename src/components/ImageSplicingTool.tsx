@@ -12,9 +12,9 @@ import { isImageFile } from "@/lib/image-types";
 
 const ImageSplicingTool: React.FC = () => {
   const { toast } = useToast();
-  const [layout, setLayout] = useState<"single" | "row" | "grid">("grid");
-  const [rows, setRows] = useState(2);
-  const [columns, setColumns] = useState(2);
+  const [layout, setLayout] = useState<"single" | "row" | "grid">("row");
+  const [rows, setRows] = useState(1);
+  const [columns, setColumns] = useState(1);
   const [spacing, setSpacing] = useState(0);
   const [autoSize, setAutoSize] = useState(true);
   const [format, setFormat] = useState<string>("png");
@@ -29,6 +29,16 @@ const ImageSplicingTool: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"upload" | "edit">("upload");
   const [isCopied, setIsCopied] = useState(false);
   const resultContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadButtonClick = () => {
+    setActiveTab("upload");
+    setTimeout(() => {
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    }, 50);
+  };
 
   const handleReorderImages = (newOrder: File[]) => {
     setImages(newOrder);
@@ -73,10 +83,12 @@ const ImageSplicingTool: React.FC = () => {
     if (layout === "single" && images.length > 1) {
       setRows(1);
       setColumns(1);
-    } else if (layout === "row" && images.length > 0) {
-      setRows(images.length);
+    } else if (layout === "row") {
+      setRows(Math.max(images.length, 1));
       setColumns(1);
     } else if (layout === "grid") {
+      setRows(2);
+      setColumns(2);
     }
   }, [layout, images.length]);
 
@@ -123,7 +135,7 @@ const ImageSplicingTool: React.FC = () => {
       setRows(1);
       setColumns(1);
     } else if (newLayout === "row") {
-      setRows(images.length || 1);
+      setRows(Math.max(images.length, 1));
       setColumns(1);
     } else if (newLayout === "grid") {
       setRows(2);
@@ -211,9 +223,9 @@ const ImageSplicingTool: React.FC = () => {
 
   const handleReset = () => {
     setImages([]);
-    setLayout("grid");
-    setRows(2);
-    setColumns(2);
+    setLayout("row");
+    setRows(1);
+    setColumns(1);
     setSpacing(0);
     setAutoSize(true);
     setFormat("png");
@@ -234,7 +246,7 @@ const ImageSplicingTool: React.FC = () => {
       }
       return `横排 (${images.length} 张图片)`;
     } else if (layout === 'row') {
-      return `单列 (${rows} 张图片)`;
+      return `横排 (${rows} 张图片)`;
     } else {
       return `网格 (${rows}×${columns})`;
     }
@@ -279,7 +291,10 @@ const ImageSplicingTool: React.FC = () => {
             </TabsList>
 
             <TabsContent value="upload" className="mt-0 space-y-4">
-              <ImageUploader onImagesSelected={handleImagesSelected} />
+              <ImageUploader 
+                onImagesSelected={handleImagesSelected} 
+                ref={fileInputRef}
+              />
             </TabsContent>
 
             <TabsContent value="edit" className="mt-0 space-y-6">
@@ -387,7 +402,7 @@ const ImageSplicingTool: React.FC = () => {
                   </div>
                   <p className="text-gray-400 mb-4">暂无图片，请先上传</p>
                   <Button
-                    onClick={() => setActiveTab("upload")}
+                    onClick={handleUploadButtonClick}
                     className="bg-tool-primary/10 border border-tool-primary/30 text-tool-primary hover:bg-tool-primary/20 hover:border-tool-primary transition-all"
                   >
                     上传图片
