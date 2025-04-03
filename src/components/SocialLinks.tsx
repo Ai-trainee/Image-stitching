@@ -102,7 +102,7 @@ const textLinks = [
     },
     {
         name: 'Cursor云开发',
-        url: 'https://cloud.sealos.run/?uid=YSgbXmiema'
+        url: 'https://mp.weixin.qq.com/s?__biz=MzkyMzY1NTM0Mw==&mid=2247496572&idx=1&sn=757d995b9ee8adf814d7b1de2f50b8cd&scene=19#wechat_redirect'
     }
 ];
 

@@ -51,7 +51,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesSelected }) => {
       className={`border-2 border-dashed rounded-lg p-8 text-center h-64 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden ${
         isDragging 
           ? "border-tool-primary bg-tool-primary/5 shadow-[0_0_15px_rgba(0,230,230,0.15)]" 
-          : "border-tool-border/40 bg-black/40 hover:border-tool-primary/50 hover:bg-tool-primary/5"
+          : "border-tool-border/40 bg-black hover:border-tool-primary/50 hover:bg-tool-primary/5"
       }`}
       onClick={handleClick}
       onDragOver={handleDragOver}
@@ -71,23 +71,23 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesSelected }) => {
         <div className="flex items-center justify-center mb-3">
           <div className="relative">
             <div className="absolute inset-0 bg-tool-primary/20 blur-md rounded-full animate-pulse"></div>
-            <Image size={40} className={`${isDragging ? 'text-tool-primary' : 'text-gray-400'} relative`} />
+            <Image size={40} className={`${isDragging ? 'text-tool-primary' : 'text-gray-300'} relative`} />
           </div>
           <ClipboardPaste size={24} className="text-tool-primary ml-2 animate-pulse" />
         </div>
         
-        <h3 className={`text-lg font-medium mb-3 ${isDragging ? 'text-tool-primary' : 'text-white'}`}>
+        <h3 className={`text-lg font-medium mb-3 ${isDragging ? 'text-tool-primary' : 'text-gray-200'}`}>
           拖入或选择图片
         </h3>
         
-        <div className="px-4 py-1.5 bg-black/70 border border-tool-border/30 rounded-full inline-block mb-4">
+        <div className="px-4 py-1.5 bg-black border border-tool-border/50 rounded-full inline-block mb-4 shadow-md">
           <span className="text-tool-primary font-medium">Ctrl+V</span>
           <span className="text-gray-300 ml-1">粘贴图片</span>
         </div>
         
         <div className="flex flex-wrap justify-center gap-2 max-w-md mx-auto">
           {IMAGE_EXTENSIONS_DISPLAY.map((ext) => (
-            <div key={ext.name} className="flex items-center text-xs bg-black/60 border border-tool-border/20 px-2 py-1 rounded-md">
+            <div key={ext.name} className="flex items-center text-xs bg-black border border-tool-border/50 px-2.5 py-1 rounded-md shadow-sm">
               <span className="mr-1 text-tool-primary">✓</span>
               <span className="text-gray-300">.{ext.name}</span>
             </div>
