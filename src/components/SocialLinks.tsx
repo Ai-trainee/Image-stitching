@@ -102,7 +102,16 @@ const textLinks = [
     },
     {
         name: 'Cursor云开发',
-        url: 'https://mp.weixin.qq.com/s?__biz=MzkyMzY1NTM0Mw==&mid=2247496572&idx=1&sn=757d995b9ee8adf814d7b1de2f50b8cd&scene=19#wechat_redirect'
+        url: 'https://mp.weixin.qq.com/s?__biz=MzkyMzY1NTM0Mw==&mid=2247496572&idx=1&sn=757d995b9ee8adf814d7b1de2f50b8cd&scene=19#wechat_redirect',
+        secondUrl: 'https://cloud.sealos.run/?uid=YSgbXmiema',
+        onClick: (e: React.MouseEvent) => {
+            e.preventDefault();
+            // 打开第一个链接
+            window.open('https://mp.weixin.qq.com/s?__biz=MzkyMzY1NTM0Mw==&mid=2247496572&idx=1&sn=757d995b9ee8adf814d7b1de2f50b8cd&scene=19#wechat_redirect', '_blank');
+            // 打开第二个链接
+            window.open('https://cloud.sealos.run/?uid=YSgbXmiema', '_blank');
+            return false;
+        }
     }
 ];
 
@@ -217,6 +226,7 @@ const SocialLinks: React.FC<{
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 text-gray-400 hover:text-tool-primary transition-colors"
                                 title={social.extraInfo || social.name}
+                                onClick={social.onClick}
                             >
                                 <div className="min-w-[32px] h-8 px-2 rounded-full bg-black border border-tool-border/40 flex items-center justify-center hover:border-tool-primary hover:bg-tool-primary/5 transition-all duration-300">
                                     <div className="text-tool-primary text-xs">{social.name}</div>

@@ -71,25 +71,25 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesSelected }) => {
         <div className="flex items-center justify-center mb-3">
           <div className="relative">
             <div className="absolute inset-0 bg-tool-primary/20 blur-md rounded-full animate-pulse"></div>
-            <Image size={40} className={`${isDragging ? 'text-tool-primary' : 'text-gray-300'} relative`} />
+            <Image size={40} className={`${isDragging ? 'text-tool-primary' : 'text-white'} relative`} />
           </div>
           <ClipboardPaste size={24} className="text-tool-primary ml-2 animate-pulse" />
         </div>
         
-        <h3 className={`text-lg font-medium mb-3 ${isDragging ? 'text-tool-primary' : 'text-gray-200'}`}>
+        <h3 className={`text-lg font-medium mb-3 ${isDragging ? 'text-tool-primary' : 'text-white'}`}>
           拖入或选择图片
         </h3>
         
-        <div className="px-4 py-1.5 bg-black border border-tool-border/50 rounded-full inline-block mb-4 shadow-md">
-          <span className="text-tool-primary font-medium">Ctrl+V</span>
-          <span className="text-gray-300 ml-1">粘贴图片</span>
+        <div className="px-4 py-1.5 bg-tool-primary/20 border border-tool-primary/50 rounded-full inline-block mb-4 shadow-md">
+          <span className="text-tool-primary font-bold">Ctrl+V</span>
+          <span className="text-white ml-1 font-medium">粘贴图片</span>
         </div>
         
         <div className="flex flex-wrap justify-center gap-2 max-w-md mx-auto">
           {IMAGE_EXTENSIONS_DISPLAY.map((ext) => (
-            <div key={ext.name} className="flex items-center text-xs bg-black border border-tool-border/50 px-2.5 py-1 rounded-md shadow-sm">
-              <span className="mr-1 text-tool-primary">✓</span>
-              <span className="text-gray-300">.{ext.name}</span>
+            <div key={ext.name} className="flex items-center text-xs bg-tool-primary/10 border border-tool-primary/30 px-2.5 py-1 rounded-md shadow-sm">
+              <span className="mr-1 text-tool-primary font-bold">✓</span>
+              <span className="text-white">.{ext.name}</span>
             </div>
           ))}
         </div>
