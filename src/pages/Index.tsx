@@ -17,7 +17,7 @@ const Index = () => {
               <span className="absolute inset-0 rounded-full bg-tool-primary/20 animate-pulse"></span>
               <span className="relative">AT</span>
             </div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-white to-tool-primary bg-clip-text text-transparent">图片即贴</h1>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-white to-tool-primary bg-clip-text text-transparent">图片工具 - 已修复</h1>
           </div>
 
           {/* 顶部导航链接 */}

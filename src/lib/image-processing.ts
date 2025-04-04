@@ -10,215 +10,226 @@ export interface SplicedImageConfig {
 export const createSplicedImage = async (
   images: File[],
   config: SplicedImageConfig
-): Promise<{ blob: Blob; canvas: HTMLCanvasElement }> => {
-  console.log('createSplicedImage: 开始处理', { 
-    图片数量: images.length, 
-    配置: config 
-  });
+): Promise<{ blob: Blob, canvas: HTMLCanvasElement }> => {
+  const { rows, columns, spacing, format, quality, autoSize } = config;
+  
+  // Load all images
+  const loadedImages = await Promise.all(
+    images.map((file) => {
+      return new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    })
+  );
 
-  try {
-    const { rows, columns, spacing, format, quality, autoSize } = config;
-
-    // 加载所有图片
-    const loadedImages = await Promise.all(
-      images.map(
-        (file) =>
-          new Promise<HTMLImageElement>((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = (e) => {
-              console.error('加载图片失败:', file.name, e);
-              reject(new Error(`Failed to load image: ${file.name}`));
-            };
-            img.src = URL.createObjectURL(file);
-          })
-      )
-    );
-
-    console.log('createSplicedImage: 所有图片加载完成', loadedImages.length);
-
-    // 计算画布尺寸
-    let canvasWidth = 0;
-    let canvasHeight = 0;
-
-    if (images.length === 0) {
-      throw new Error("No images to splice");
-    }
-
-    if (columns === 1 && rows === 1 && images.length === 1) {
-      console.log('createSplicedImage: 使用单图模式');
-      // 只使用第一张图片
-      const firstImage = loadedImages[0];
-      canvasWidth = firstImage.width;
-      canvasHeight = firstImage.height;
-    } else if (columns === 1) {
-      console.log('createSplicedImage: 使用横排模式');
-      // 一列多行
-      if (autoSize) {
-        // 保持原始尺寸
-        let maxWidth = 0;
-        let totalHeight = 0;
-
-        loadedImages.forEach((img) => {
-          maxWidth = Math.max(maxWidth, img.width);
-          totalHeight += img.height;
-        });
-
-        totalHeight += (loadedImages.length - 1) * spacing;
-        canvasWidth = maxWidth;
-        canvasHeight = totalHeight;
-      } else {
-        // 统一尺寸
-        const firstImage = loadedImages[0];
-        const aspectRatio = firstImage.width / firstImage.height;
-        canvasWidth = firstImage.width;
-        canvasHeight =
-          firstImage.height * loadedImages.length +
-          spacing * (loadedImages.length - 1);
-      }
-    } else {
-      console.log('createSplicedImage: 使用网格模式');
-      // 网格布局
-      if (autoSize) {
-        // 保持原始尺寸
-        let totalWidth = 0;
-        let totalHeight = 0;
-        let maxRowHeight = 0;
-        let currentRow = 0;
-        let currentCol = 0;
-
-        loadedImages.forEach((img, index) => {
-          const row = Math.floor(index / columns);
-          const col = index % columns;
-
-          if (row !== currentRow) {
-            totalHeight += maxRowHeight + spacing;
-            maxRowHeight = 0;
-            currentRow = row;
-            currentCol = 0;
-          }
-
-          if (currentCol === 0) {
-            totalWidth = Math.max(totalWidth, img.width);
-          } else {
-            totalWidth = Math.max(
-              totalWidth,
-              img.width + spacing * col
-            );
-          }
-
-          maxRowHeight = Math.max(maxRowHeight, img.height);
-          currentCol++;
-        });
-
-        totalHeight += maxRowHeight;
-        canvasWidth = totalWidth;
-        canvasHeight = totalHeight;
-      } else {
-        // 统一尺寸
-        const firstImage = loadedImages[0];
-        canvasWidth =
-          firstImage.width * columns +
-          spacing * (columns - 1);
-        canvasHeight =
-          firstImage.height * rows + spacing * (rows - 1);
-      }
-    }
-
-    console.log('createSplicedImage: 计算画布尺寸', { canvasWidth, canvasHeight });
-
-    // 创建画布
+  // Handle empty images array
+  if (loadedImages.length === 0) {
     const canvas = document.createElement("canvas");
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
+    canvas.width = 400;
+    canvas.height = 300;
     const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve({ blob, canvas });
+        } else {
+          // Fallback if toBlob fails
+          const defaultBlob = new Blob([], { type: `image/${format}` });
+          resolve({ blob: defaultBlob, canvas });
+        }
+      }, `image/${format}`, quality / 100);
+    });
+  }
 
-    if (!ctx) {
-      throw new Error("Failed to get canvas context");
+  // Determine layout based on mode
+  let actualRows = rows;
+  let actualColumns = columns;
+  
+  // Special handling for single mode with multiple images (横排) - display in a single row
+  if (rows === 1 && columns === 1 && loadedImages.length > 1) {
+    actualRows = 1;
+    actualColumns = loadedImages.length;
+  }
+
+  // Calculate the maximum dimensions for each cell
+  let maxWidth = 0;
+  let maxHeight = 0;
+
+  if (autoSize) {
+    // For autoSize mode, determine dimensions differently
+    // For each position in the grid, find the image that will go there
+    // and use its dimensions
+    const imageDimensions: { width: number; height: number }[] = [];
+    
+    for (let i = 0; i < loadedImages.length; i++) {
+      const img = loadedImages[i];
+      imageDimensions[i] = { width: img.width, height: img.height };
     }
 
-    // 绘制图片
-    if (columns === 1 && rows === 1 && images.length === 1) {
-      // 单图模式
-      const firstImage = loadedImages[0];
-      ctx.drawImage(firstImage, 0, 0);
-    } else if (columns === 1) {
-      // 纵向布局
-      let yOffset = 0;
-
-      loadedImages.forEach((img) => {
-        let drawWidth = img.width;
-        let drawHeight = img.height;
-
-        if (!autoSize) {
-          // 统一尺寸
-          drawWidth = canvas.width;
-          drawHeight = (img.height / img.width) * drawWidth;
-        }
-
-        ctx.drawImage(img, 0, yOffset, drawWidth, drawHeight);
-        yOffset += drawHeight + spacing;
-      });
+    // First, calculate total width and height required
+    let totalWidth = 0;
+    let totalHeight = 0;
+    
+    if (actualRows === 1) {
+      // For single row, add up all widths
+      totalWidth = imageDimensions.reduce((sum, dim) => sum + dim.width, 0);
+      maxHeight = Math.max(...imageDimensions.map(dim => dim.height));
+      totalHeight = maxHeight;
+    } else if (actualColumns === 1) {
+      // For single column, add up all heights
+      totalHeight = imageDimensions.reduce((sum, dim) => sum + dim.height, 0);
+      maxWidth = Math.max(...imageDimensions.map(dim => dim.width));
+      totalWidth = maxWidth;
     } else {
-      // 网格布局
-      let currentRow = 0;
-      let currentCol = 0;
-      let maxRowHeight = 0;
-      let xOffset = 0;
-      let yOffset = 0;
-
-      loadedImages.forEach((img, index) => {
-        if (currentCol >= columns) {
-          currentCol = 0;
-          currentRow++;
-          yOffset += maxRowHeight + spacing;
-          maxRowHeight = 0;
-          xOffset = 0;
-        }
-
-        let drawWidth = img.width;
-        let drawHeight = img.height;
-
-        if (!autoSize) {
-          // 统一尺寸
-          drawWidth = canvas.width / columns - spacing;
-          drawHeight = (img.height / img.width) * drawWidth;
-        }
-
-        ctx.drawImage(img, xOffset, yOffset, drawWidth, drawHeight);
-        xOffset += drawWidth + spacing;
-        maxRowHeight = Math.max(maxRowHeight, drawHeight);
-        currentCol++;
-      });
+      // For grid layout, we need to position images more carefully
+      // First, determine dimensions of each cell
+      for (const img of loadedImages) {
+        maxWidth = Math.max(maxWidth, img.width);
+        maxHeight = Math.max(maxHeight, img.height);
+      }
+      
+      // Calculate total canvas dimensions
+      totalWidth = maxWidth * actualColumns;
+      totalHeight = maxHeight * actualRows;
     }
-
-    console.log('createSplicedImage: 图片绘制完成');
-
-    // 转换为Blob
-    const blob = await new Promise<Blob>((resolve, reject) => {
+    
+    // Add spacing if needed
+    if (spacing > 0) {
+      totalWidth += (actualColumns - 1) * spacing;
+      totalHeight += (actualRows - 1) * spacing;
+    }
+    
+    // Create canvas with calculated dimensions
+    const canvas = document.createElement("canvas");
+    canvas.width = totalWidth;
+    canvas.height = totalHeight;
+    
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Could not get canvas context");
+    }
+    
+    // Set background as transparent
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw images on canvas
+    let x = 0;
+    let y = 0;
+    let index = 0;
+    
+    if (actualRows === 1) {
+      // Single row layout
+      for (let c = 0; c < Math.min(actualColumns, loadedImages.length); c++) {
+        const img = loadedImages[c];
+        ctx.drawImage(img, x, (totalHeight - img.height) / 2);
+        x += img.width + (c < actualColumns - 1 ? spacing : 0);
+      }
+    } else if (actualColumns === 1) {
+      // Single column layout
+      for (let r = 0; r < Math.min(actualRows, loadedImages.length); r++) {
+        const img = loadedImages[r];
+        ctx.drawImage(img, (totalWidth - img.width) / 2, y);
+        y += img.height + (r < actualRows - 1 ? spacing : 0);
+      }
+    } else {
+      // Grid layout
+      for (let r = 0; r < actualRows; r++) {
+        x = 0;
+        for (let c = 0; c < actualColumns; c++) {
+          if (index >= loadedImages.length) break;
+          
+          const img = loadedImages[index];
+          const cellX = x + (maxWidth - img.width) / 2;
+          const cellY = y + (maxHeight - img.height) / 2;
+          
+          ctx.drawImage(img, cellX, cellY);
+          
+          x += maxWidth + spacing;
+          index++;
+        }
+        y += maxHeight + spacing;
+      }
+    }
+    
+    // Convert to desired format
+    return new Promise<{ blob: Blob, canvas: HTMLCanvasElement }>((resolve, reject) => {
       canvas.toBlob(
         (blob) => {
           if (blob) {
-            resolve(blob);
+            resolve({ blob, canvas });
           } else {
-            reject(new Error("Failed to create blob from canvas"));
+            reject(new Error("Failed to create image blob"));
           }
         },
         `image/${format}`,
-        format === "png" ? undefined : quality / 100
+        quality / 100
       );
     });
+  } else {
+    // For uniform size, use the dimensions of the first image for all
+    if (loadedImages.length > 0) {
+      maxWidth = loadedImages[0].width;
+      maxHeight = loadedImages[0].height;
+    }
 
-    console.log('createSplicedImage: Blob创建成功', { 大小: blob.size });
-    return { blob, canvas };
-  } catch (error) {
-    console.error("图片处理过程中出错:", error);
-    throw error;
+    // Create canvas with appropriate dimensions
+    const canvas = document.createElement("canvas");
+    const totalWidth = actualColumns * maxWidth + (actualColumns - 1) * spacing;
+    const totalHeight = actualRows * maxHeight + (actualRows - 1) * spacing;
+    
+    canvas.width = totalWidth;
+    canvas.height = totalHeight;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Could not get canvas context");
+    }
+
+    // Set background as transparent
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw images on canvas
+    let index = 0;
+    for (let r = 0; r < actualRows; r++) {
+      for (let c = 0; c < actualColumns; c++) {
+        if (index >= loadedImages.length) break;
+
+        const img = loadedImages[index];
+        const x = c * (maxWidth + spacing);
+        const y = r * (maxHeight + spacing);
+        
+        // For uniform size, resize all images to the first image's dimensions
+        ctx.drawImage(img, x, y, maxWidth, maxHeight);
+        
+        index++;
+      }
+    }
+
+    // Convert to desired format
+    return new Promise<{ blob: Blob, canvas: HTMLCanvasElement }>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve({ blob, canvas });
+          } else {
+            reject(new Error("Failed to create image blob"));
+          }
+        },
+        `image/${format}`,
+        quality / 100
+      );
+    });
   }
 };
 
 export const downloadImage = (blob: Blob, filename: string) => {
-  console.log('downloadImage: 开始下载', { filename, blobSize: blob.size });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -227,45 +238,76 @@ export const downloadImage = (blob: Blob, filename: string) => {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  console.log('downloadImage: 下载完成');
 };
 
-export const copyImageToClipboard = async (
-  canvas: HTMLCanvasElement
-): Promise<boolean> => {
-  console.log('copyImageToClipboard: 尝试复制到剪贴板');
+export const copyImageToClipboard = async (canvas: HTMLCanvasElement): Promise<boolean> => {
   try {
-    // 常规方法
-    const blob = await new Promise<Blob>((resolve) =>
-      canvas.toBlob((b) => resolve(b!), "image/png")
-    );
-    console.log('copyImageToClipboard: 转换为blob成功', { size: blob.size });
-
-    if (navigator.clipboard && navigator.clipboard.write) {
-      console.log('copyImageToClipboard: 使用Clipboard API');
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "image/png": blob,
-        }),
-      ]);
-      console.log('copyImageToClipboard: 复制成功');
-      return true;
-    } else {
-      console.log('copyImageToClipboard: 不支持Clipboard API，尝试备用方法');
-      // 备用方法
-      canvas.toBlob(function (blob) {
-        try {
-          const item = new ClipboardItem({ "image/png": blob! });
-          navigator.clipboard.write([item]);
-          console.log('copyImageToClipboard: 备用方法复制成功');
-        } catch (e) {
-          console.error('copyImageToClipboard: 备用方法失败', e);
-        }
+    // Try the Clipboard API first (most modern browsers)
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((b) => {
+        if (b) resolve(b);
+        else reject(new Error("Failed to create blob from canvas"));
       });
-    }
+    });
+
+    // Use the clipboard API to copy
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        [blob.type]: blob
+      })
+    ]);
+    
     return true;
   } catch (error) {
-    console.error("复制到剪贴板失败:", error);
+    console.error("Error copying image to clipboard:", error);
+    
+    try {
+      // Fallback for browsers that don't support ClipboardItem
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          try {
+            // Create a temporary image element
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(blob);
+            
+            // Create a temporary div for the image
+            const div = document.createElement('div');
+            div.contentEditable = 'true';
+            div.style.position = 'fixed';
+            div.style.opacity = '0';
+            div.appendChild(img);
+            
+            // Add to DOM, select, and try to copy
+            document.body.appendChild(div);
+            
+            // Select the image
+            const range = document.createRange();
+            range.selectNode(div);
+            const selection = window.getSelection();
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+            
+            // Execute copy command
+            const success = document.execCommand('copy');
+            
+            // Clean up
+            selection?.removeAllRanges();
+            document.body.removeChild(div);
+            URL.revokeObjectURL(img.src);
+            
+            return success;
+          } catch (fallbackError) {
+            console.error("Fallback copy method failed:", fallbackError);
+            return false;
+          }
+        }
+        return false;
+      });
+    } catch (fallbackError) {
+      console.error("All copy methods failed:", fallbackError);
+      return false;
+    }
+    
     return false;
   }
 };

@@ -218,7 +218,7 @@ const SocialLinks: React.FC<{
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 text-gray-400 hover:text-tool-primary transition-colors"
                                 title={social.extraInfo || social.name}
-                                onClick={social.onClick}
+                                onClick={social.onClick !== null ? social.onClick : undefined}
                             >
                                 <div className="min-w-[32px] h-8 px-2 rounded-full bg-black border border-tool-border/40 flex items-center justify-center hover:border-tool-primary hover:bg-tool-primary/5 transition-all duration-300">
                                     <div className="text-tool-primary text-xs">{social.name}</div>
@@ -240,7 +240,7 @@ const SocialLinks: React.FC<{
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 text-gray-400 hover:text-tool-primary transition-colors"
                                 title={social.name}
-                                onClick={social.onClick}
+                                onClick={social.onClick !== null ? social.onClick : undefined}
                             >
                                 <div className="w-8 h-8 rounded-full bg-black border border-tool-border/40 flex items-center justify-center hover:border-tool-primary hover:bg-tool-primary/5 transition-all duration-300">
                                     <div className="text-tool-primary">{social.icon}</div>
