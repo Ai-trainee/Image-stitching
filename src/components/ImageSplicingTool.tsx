@@ -39,14 +39,14 @@ const ImageSplicingTool: React.FC = () => {
       if (e.clipboardData && e.clipboardData.files.length > 0) {
         const files = Array.from(e.clipboardData.files);
         const imageFiles = files.filter(isImageFile);
-        
+
         if (imageFiles.length > 0) {
           setImages(prev => [...prev, ...imageFiles]);
           toast({
             title: "图片已添加",
             description: `已添加 ${imageFiles.length} 张图片从剪贴板`,
           });
-          
+
           if (activeTab === "upload" && images.length === 0) {
             setActiveTab("edit");
           }
@@ -62,7 +62,7 @@ const ImageSplicingTool: React.FC = () => {
 
     window.addEventListener("paste", handlePaste);
     window.addEventListener("keydown", handleKeyDown);
-    
+
     return () => {
       window.removeEventListener("paste", handlePaste);
       window.removeEventListener("keydown", handleKeyDown);
@@ -86,13 +86,13 @@ const ImageSplicingTool: React.FC = () => {
         handleCreateSplicedImage(false);
       }
     }, 500);
-    
+
     return () => clearTimeout(debounce);
   }, [layout, rows, columns, spacing, autoSize, format, quality, images]);
 
   const handleImagesSelected = (files: File[]) => {
     const imageFiles = files.filter(isImageFile);
-    
+
     if (imageFiles.length === 0) {
       toast({
         title: "无效文件",
@@ -106,7 +106,7 @@ const ImageSplicingTool: React.FC = () => {
     toast({
       description: `已添加 ${imageFiles.length} 张图片`,
     });
-    
+
     if (images.length === 0 && activeTab === "upload") {
       setActiveTab("edit");
     }
@@ -118,7 +118,7 @@ const ImageSplicingTool: React.FC = () => {
 
   const handleLayoutChange = (newLayout: "single" | "row" | "grid") => {
     setLayout(newLayout);
-    
+
     if (newLayout === "single") {
       setRows(1);
       setColumns(1);
@@ -138,7 +138,7 @@ const ImageSplicingTool: React.FC = () => {
 
     try {
       setIsProcessing(true);
-      
+
       const config = {
         rows: layout === "row" ? images.length : rows,
         columns: layout === "row" ? 1 : columns,
@@ -150,9 +150,9 @@ const ImageSplicingTool: React.FC = () => {
 
       const { blob, canvas } = await createSplicedImage(images, config);
       const url = URL.createObjectURL(blob);
-      
+
       setResultImage({ url, blob, canvas });
-      
+
       if (showNotification) {
         toast({
           description: "拼接图片已创建，Ctrl+C 复制",
@@ -182,13 +182,13 @@ const ImageSplicingTool: React.FC = () => {
   const handleCopyImage = async () => {
     if (resultImage.canvas) {
       const success = await copyImageToClipboard(resultImage.canvas);
-      
+
       if (success) {
         setIsCopied(true);
         toast({
           description: "图片已复制到剪贴板",
         });
-        
+
         setTimeout(() => setIsCopied(false), 2000);
       } else {
         toast({
@@ -210,11 +210,6 @@ const ImageSplicingTool: React.FC = () => {
   });
 
   const handleReset = () => {
-    if (images.length > 0) {
-      const confirmed = window.confirm("确定要重置所有图片和设置吗？");
-      if (!confirmed) return;
-    }
-    
     setImages([]);
     setLayout("grid");
     setRows(2);
@@ -225,7 +220,7 @@ const ImageSplicingTool: React.FC = () => {
     setQuality(90);
     setResultImage({ url: null, blob: null, canvas: null });
     setActiveTab("upload");
-    
+
     toast({
       description: "所有图片和设置已重置",
     });
@@ -251,12 +246,12 @@ const ImageSplicingTool: React.FC = () => {
           <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-tool-primary bg-clip-text text-transparent">
             Aitrainee 图片工具
           </h1>
-          <Button 
+          <Button
             variant="outline"
             className="text-tool-primary border border-tool-border/50 bg-black/40 hover:bg-tool-primary/10 hover:border-tool-primary transition-all"
             onClick={handleReset}
           >
-            新操作
+            一键重置
           </Button>
         </div>
         <p className="text-gray-400">
@@ -268,31 +263,31 @@ const ImageSplicingTool: React.FC = () => {
         <div className="lg:col-span-1 space-y-5">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "upload" | "edit")} className="space-y-5">
             <TabsList className="grid w-full grid-cols-2 bg-black border border-tool-border/30 p-1 rounded-lg">
-              <TabsTrigger 
-                value="upload" 
+              <TabsTrigger
+                value="upload"
                 className="data-[state=inactive]:bg-transparent data-[state=inactive]:text-gray-400 data-[state=active]:bg-tool-primary data-[state=active]:text-black rounded-md font-medium"
               >
                 上传图片
               </TabsTrigger>
-              <TabsTrigger 
-                value="edit" 
+              <TabsTrigger
+                value="edit"
                 className="data-[state=inactive]:bg-transparent data-[state=inactive]:text-gray-400 data-[state=active]:bg-tool-primary data-[state=active]:text-black rounded-md font-medium"
               >
                 布局设置
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="upload" className="mt-0 space-y-4">
               <ImageUploader onImagesSelected={handleImagesSelected} />
             </TabsContent>
-            
+
             <TabsContent value="edit" className="mt-0 space-y-6">
               <div className="bg-tool-surface p-5 rounded-lg space-y-6 border border-tool-border/30 shadow-lg">
-                <LayoutOptions 
-                  selectedLayout={layout} 
-                  onSelectLayout={handleLayoutChange} 
+                <LayoutOptions
+                  selectedLayout={layout}
+                  onSelectLayout={handleLayoutChange}
                 />
-                
+
                 <OptionsPanel
                   rows={rows}
                   columns={columns}
@@ -308,7 +303,7 @@ const ImageSplicingTool: React.FC = () => {
                   onFormatChange={setFormat}
                   onQualityChange={setQuality}
                 />
-                
+
                 <div className="bg-black/50 rounded-lg p-4 text-xs space-y-2 border border-tool-border/20">
                   <div className="flex justify-between text-gray-300">
                     <span>当前设置:</span>
@@ -332,8 +327,8 @@ const ImageSplicingTool: React.FC = () => {
           </Tabs>
 
           <div className="mt-2">
-            <ImagePreview 
-              images={images} 
+            <ImagePreview
+              images={images}
               onRemoveImage={handleRemoveImage}
               onReorderImages={handleReorderImages}
             />
@@ -356,17 +351,17 @@ const ImageSplicingTool: React.FC = () => {
                 </Button>
               </div>
             </div>
-            
+
             <div className="relative border border-tool-border/50 rounded-lg overflow-hidden mb-4 shadow-[0_0_15px_rgba(0,230,230,0.1)]">
               {images.length > 0 ? (
-                <div 
+                <div
                   ref={resultContainerRef}
                   className="relative bg-black/80 bg-grid-pattern h-[340px] flex items-center justify-center"
                 >
                   {resultImage.url ? (
-                    <img 
-                      src={resultImage.url} 
-                      alt="拼接结果" 
+                    <img
+                      src={resultImage.url}
+                      alt="拼接结果"
                       className="max-w-full max-h-full object-contain"
                     />
                   ) : (
@@ -375,7 +370,7 @@ const ImageSplicingTool: React.FC = () => {
                       <p>生成预览中...</p>
                     </div>
                   )}
-                  
+
                   {isProcessing && (
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
                       <div className="w-10 h-10 border-2 border-tool-primary border-t-transparent rounded-full animate-spin"></div>
@@ -390,7 +385,7 @@ const ImageSplicingTool: React.FC = () => {
                     </svg>
                   </div>
                   <p className="text-gray-400 mb-4">暂无图片，请先上传</p>
-                  <Button 
+                  <Button
                     onClick={() => setActiveTab("upload")}
                     className="bg-tool-primary/10 border border-tool-primary/30 text-tool-primary hover:bg-tool-primary/20 hover:border-tool-primary transition-all"
                   >
@@ -399,12 +394,12 @@ const ImageSplicingTool: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             <div className="flex justify-between items-center">
               <div className="text-xs text-gray-400">
                 {resultImage.url && `格式: ${format.toUpperCase()}${format !== 'png' ? ` · 质量: ${quality}%` : ''}`}
               </div>
-              
+
               <div className="flex space-x-3">
                 <Button
                   variant="outline"
@@ -416,10 +411,10 @@ const ImageSplicingTool: React.FC = () => {
                   {isCopied ? <Check size={14} /> : <Copy size={14} />}
                   {isCopied ? "已复制" : "复制图片"}
                 </Button>
-                
+
                 <Button
                   variant="outline"
-                  size="sm" 
+                  size="sm"
                   className="text-tool-primary border-tool-border/50 bg-black/60 hover:bg-tool-primary/10 hover:border-tool-primary gap-1.5 transition-all"
                   onClick={handleDownloadImage}
                   disabled={!resultImage.blob || isProcessing}
@@ -429,10 +424,10 @@ const ImageSplicingTool: React.FC = () => {
                 </Button>
               </div>
             </div>
-            
+
             <div className="absolute top-0 right-0 w-[200px] h-[200px] rounded-full bg-tool-primary/5 blur-[80px] -z-10"></div>
           </div>
-          
+
           <div className="bg-tool-surface p-4 rounded-lg border border-tool-border/30 shadow-lg">
             <div className="text-xs text-gray-300 flex items-center justify-between">
               <span className="text-tool-primary/80 font-medium">快捷键: </span>
