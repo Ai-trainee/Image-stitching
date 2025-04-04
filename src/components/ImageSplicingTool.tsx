@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Download, Check, Upload, Zap, Info, RefreshCw } from "lucide-react";
+import { Copy, Download, Check, Upload, RefreshCw } from "lucide-react";
 import LayoutOptions from "@/components/LayoutOptions";
 import OptionsPanel from "@/components/OptionsPanel";
 import ImageUploader from "@/components/ImageUploader";
@@ -22,46 +22,6 @@ const DEFAULT_SETTINGS = {
   quality: 90,
   autoSwitchToPreview: true,
   autoProcessOnUpload: true
-};
-
-// 公众号预设
-const WECHAT_PRESETS = [
-  {
-    name: "公众号封面",
-    description: "900×383px 封面图片",
-    settings: {
-      layout: "single" as "single" | "row" | "grid",
-      autoSize: false,
-      format: "jpeg",
-      width: 900,
-      height: 383
-    }
-  },
-  {
-    name: "公众号正文",
-    description: "宽度900px，自适应高度",
-    settings: {
-      layout: "row" as "single" | "row" | "grid",
-      autoSize: false,
-      format: "jpeg",
-      width: 900
-    }
-  },
-  {
-    name: "快速拼接",
-    description: "保持原始尺寸横排拼接",
-    settings: {
-      layout: "row" as "single" | "row" | "grid",
-      autoSize: true,
-      format: "png"
-    }
-  }
-];
-
-// 检查图片是否适合公众号
-const isIdealForWechat = (dimensions: {width: number, height: number}) => {
-  // 公众号推荐宽度是900px
-  return dimensions.width === 900;
 };
 
 const ImageSplicingTool: React.FC = () => {
@@ -88,12 +48,24 @@ const ImageSplicingTool: React.FC = () => {
   const resultContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 添加日志 - 记录每次状态变化
+  useEffect(() => {
+    console.log('当前状态:', { 
+      layout, 
+      images: images.length, 
+      activeTab, 
+      processing: isProcessing,
+      hasResult: !!resultImage.canvas
+    });
+  }, [layout, images.length, activeTab, isProcessing, resultImage.canvas]);
+
   // 从localStorage加载设置
   useEffect(() => {
     const savedSettings = localStorage.getItem('imageToolSettings');
     if (savedSettings) {
       try {
         const settings = JSON.parse(savedSettings);
+        console.log('加载设置:', settings); // 添加日志
         setLayout(settings.layout || DEFAULT_SETTINGS.layout);
         setRows(settings.rows || DEFAULT_SETTINGS.rows);
         setColumns(settings.columns || DEFAULT_SETTINGS.columns);
@@ -108,6 +80,8 @@ const ImageSplicingTool: React.FC = () => {
       } catch (e) {
         console.error("加载保存的设置时出错", e);
       }
+    } else {
+      console.log('未找到已保存的设置，使用默认设置'); // 添加日志
     }
   }, []);
 
@@ -127,26 +101,8 @@ const ImageSplicingTool: React.FC = () => {
     localStorage.setItem('imageToolSettings', JSON.stringify(currentSettings));
   }, [layout, rows, columns, spacing, autoSize, format, quality, autoSwitchToPreview, autoProcessOnUpload]);
 
-  // 应用预设
-  const applyPreset = (preset: typeof WECHAT_PRESETS[0]) => {
-    const { settings } = preset;
-    setLayout(settings.layout);
-    setAutoSize(settings.autoSize);
-    setFormat(settings.format);
-    
-    // 如果要处理其他属性，这里可以添加
-
-    toast({
-      description: `已应用预设：${preset.name}`,
-      className: "bg-tool-primary/20 border border-tool-primary text-white font-medium"
-    });
-
-    if (images.length > 0) {
-      handleCreateSplicedImage(false);
-    }
-  };
-
   const handleUploadButtonClick = () => {
+    console.log('点击上传按钮'); // 添加日志
     setActiveTab("upload");
     setTimeout(() => {
       if (fileInputRef.current) {
@@ -157,25 +113,25 @@ const ImageSplicingTool: React.FC = () => {
 
   // 快速上传并处理
   const handleQuickUpload = () => {
+    console.log('快速上传并处理'); // 添加日志
     handleUploadButtonClick();
     // 后续处理由handleImagesSelected完成
   };
 
-  // 应用公众号最佳实践预设
-  const handleWechatOptimize = () => {
-    applyPreset(WECHAT_PRESETS[1]); // 应用公众号正文预设
-  };
-
   // 一键复制当前图片
   const handleQuickCopy = () => {
+    console.log('一键复制'); // 添加日志
     if (resultImage.canvas) {
       handleCopyImage();
     } else if (images.length > 0) {
+      console.log('需要先创建拼接图片'); // 添加日志
       handleCreateSplicedImage(true).then(() => {
         // 因为状态更新是异步的，我们需要延迟执行复制操作
         setTimeout(() => {
           if (resultImage.canvas) {
             handleCopyImage();
+          } else {
+            console.error('拼接完成后canvas仍然不存在'); // 添加日志
           }
         }, 500);
       });
@@ -189,6 +145,7 @@ const ImageSplicingTool: React.FC = () => {
   };
 
   const handleReorderImages = (newOrder: File[]) => {
+    console.log('重新排序图片', newOrder.length); // 添加日志
     setImages(newOrder);
   };
 
@@ -199,11 +156,16 @@ const ImageSplicingTool: React.FC = () => {
         const imageFiles = files.filter(isImageFile);
 
         if (imageFiles.length > 0) {
+          console.log('从剪贴板粘贴图片', imageFiles.length); // 添加日志
           setImages(prev => [...prev, ...imageFiles]);
           toast({
             title: "图片已添加",
             description: `已添加 ${imageFiles.length} 张图片从剪贴板`,
           });
+
+          // 强制设置为横排模式
+          setLayout("row");
+          console.log('粘贴后设置布局为横排'); // 添加日志
 
           if (autoSwitchToPreview && activeTab === "upload") {
             setActiveTab("edit");
@@ -232,6 +194,7 @@ const ImageSplicingTool: React.FC = () => {
   }, [toast, images, activeTab, autoSwitchToPreview, autoProcessOnUpload, resultImage.canvas]);
 
   useEffect(() => {
+    console.log('布局或图片数量变化', layout, images.length); // 添加日志
     if (layout === "single" && images.length > 1) {
       setRows(1);
       setColumns(1);
@@ -247,6 +210,7 @@ const ImageSplicingTool: React.FC = () => {
   useEffect(() => {
     const debounce = setTimeout(() => {
       if (images.length > 0) {
+        console.log('设置变化，自动刷新预览'); // 添加日志
         handleCreateSplicedImage(false);
       }
     }, 500);
@@ -256,6 +220,7 @@ const ImageSplicingTool: React.FC = () => {
 
   const handleImagesSelected = (files: File[]) => {
     const imageFiles = files.filter(isImageFile);
+    console.log('选择图片', files.length, '有效图片:', imageFiles.length); // 添加日志
 
     if (imageFiles.length === 0) {
       toast({
@@ -271,22 +236,30 @@ const ImageSplicingTool: React.FC = () => {
       description: `已添加 ${imageFiles.length} 张图片`,
     });
 
+    // 强制设置为横排模式
+    console.log('设置布局为横排'); // 添加日志
+    setLayout("row");
+
     // 自动切换到编辑标签
     if (autoSwitchToPreview && (activeTab === "upload" || images.length === 0)) {
+      console.log('自动切换到编辑标签'); // 添加日志
       setActiveTab("edit");
     }
 
     // 自动处理图片
     if (autoProcessOnUpload) {
+      console.log('自动处理上传的图片'); // 添加日志
       setTimeout(() => handleCreateSplicedImage(false), 100);
     }
   };
 
   const handleRemoveImage = (index: number) => {
+    console.log('移除图片', index); // 添加日志
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleLayoutChange = (newLayout: "single" | "row" | "grid") => {
+    console.log('布局变更', newLayout); // 添加日志
     setLayout(newLayout);
 
     if (newLayout === "single") {
@@ -303,10 +276,12 @@ const ImageSplicingTool: React.FC = () => {
 
   const handleCreateSplicedImage = async (showNotification = true) => {
     if (images.length === 0) {
+      console.log('没有图片，无法创建拼接图片'); // 添加日志
       return;
     }
 
     try {
+      console.log('开始创建拼接图片', { layout, rows, columns, format }); // 添加日志
       setIsProcessing(true);
 
       const config = {
@@ -317,13 +292,16 @@ const ImageSplicingTool: React.FC = () => {
         quality,
         autoSize,
       };
+      console.log('拼接配置', config); // 添加日志
 
       const { blob, canvas } = await createSplicedImage(images, config);
+      console.log('拼接完成，获得blob和canvas'); // 添加日志
       const url = URL.createObjectURL(blob);
 
       // 获取图像尺寸
       const img = new Image();
       img.onload = () => {
+        console.log('图片加载完成，尺寸:', img.width, 'x', img.height); // 添加日志
         setResultImage({ 
           url, 
           blob, 
@@ -334,6 +312,9 @@ const ImageSplicingTool: React.FC = () => {
           }
         });
       };
+      img.onerror = (e) => {
+        console.error('图片加载失败', e); // 添加日志
+      };
       img.src = url;
 
       if (showNotification) {
@@ -342,7 +323,7 @@ const ImageSplicingTool: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error("Error creating spliced image:", error);
+      console.error("创建拼接图片时出错", error);
       toast({
         title: "出错了",
         description: "创建拼接图片时出错",
@@ -357,6 +338,7 @@ const ImageSplicingTool: React.FC = () => {
   };
 
   const handleDownloadImage = () => {
+    console.log('下载图片'); // 添加日志
     if (resultImage.blob) {
       downloadImage(resultImage.blob, `spliced-image.${format}`);
       toast({
@@ -366,6 +348,7 @@ const ImageSplicingTool: React.FC = () => {
   };
 
   const handleCopyImage = async () => {
+    console.log('复制图片到剪贴板'); // 添加日志
     if (resultImage.canvas) {
       const success = await copyImageToClipboard(resultImage.canvas);
 
@@ -377,6 +360,7 @@ const ImageSplicingTool: React.FC = () => {
 
         setTimeout(() => setIsCopied(false), 2000);
       } else {
+        console.error('复制到剪贴板失败'); // 添加日志
         toast({
           title: "复制失败",
           description: "请使用右键菜单或 Ctrl+C 复制",
@@ -396,6 +380,7 @@ const ImageSplicingTool: React.FC = () => {
   });
 
   const handleReset = () => {
+    console.log('重置所有设置'); // 添加日志
     setImages([]);
     setLayout(DEFAULT_SETTINGS.layout);
     setRows(DEFAULT_SETTINGS.rows);
@@ -428,6 +413,7 @@ const ImageSplicingTool: React.FC = () => {
 
   // 切换自动设置
   const toggleAutoSettings = (setting: 'autoSwitchToPreview' | 'autoProcessOnUpload') => {
+    console.log('切换设置', setting); // 添加日志
     if (setting === 'autoSwitchToPreview') {
       setAutoSwitchToPreview(!autoSwitchToPreview);
     } else {
@@ -471,16 +457,6 @@ const ImageSplicingTool: React.FC = () => {
           size="sm"
           variant="outline"
           className="text-white bg-tool-primary/40 hover:bg-tool-primary/60 gap-1.5 transition-all"
-          onClick={handleWechatOptimize}
-        >
-          <Zap size={14} />
-          公众号优化
-        </Button>
-        
-        <Button
-          size="sm"
-          variant="outline"
-          className="text-white bg-tool-primary/40 hover:bg-tool-primary/60 gap-1.5 transition-all"
           onClick={handleQuickCopy}
           disabled={!resultImage.canvas && images.length === 0}
         >
@@ -518,32 +494,7 @@ const ImageSplicingTool: React.FC = () => {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Info size={14} className="text-gray-500" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>公众号图片最佳宽度为900px<br/>封面图推荐比例为900:383</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
-      </div>
-
-      {/* 公众号预设选项 */}
-      <div className="grid grid-cols-3 gap-2 mb-6">
-        {WECHAT_PRESETS.map((preset, index) => (
-          <div 
-            key={index}
-            className="bg-black/50 border border-tool-border/40 rounded-md p-2 cursor-pointer hover:border-tool-primary hover:bg-tool-primary/10 transition-all"
-            onClick={() => applyPreset(preset)}
-          >
-            <div className="text-white text-sm font-medium">{preset.name}</div>
-            <div className="text-gray-400 text-xs">{preset.description}</div>
-          </div>
-        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -657,13 +608,8 @@ const ImageSplicingTool: React.FC = () => {
                         className="max-w-full max-h-full object-contain"
                       />
                       {resultImage.dimensions && (
-                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1.5">
+                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                           <span>{resultImage.dimensions.width} × {resultImage.dimensions.height}px</span>
-                          {isIdealForWechat(resultImage.dimensions) && (
-                            <span className="text-green-400 flex items-center">
-                              <Check size={12} className="mr-0.5" /> 适合公众号
-                            </span>
-                          )}
                         </div>
                       )}
                     </>
