@@ -49,7 +49,7 @@ const OptionsPanel: React.FC<OptionsPanelProps> = ({
         <div className="flex justify-between items-center bg-tool-primary/5 p-2.5 border border-tool-primary/20 rounded-lg">
           <div className="text-sm text-white flex items-center gap-2">
             <span>保持图片原始尺寸</span>
-            {autoSize && <Badge variant="outline" className="bg-tool-primary/30 text-[10px] border-tool-primary/60">推荐</Badge>}
+            {autoSize && <Badge variant="outline" className="bg-tool-primary text-black font-bold text-[11px] border-tool-primary shadow-md shadow-tool-glow/50">推荐</Badge>}
           </div>
           <Switch
             checked={autoSize}

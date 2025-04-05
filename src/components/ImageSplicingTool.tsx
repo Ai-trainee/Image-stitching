@@ -36,9 +36,15 @@ const ImageSplicingTool: React.FC = () => {
 
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
+      console.log("粘贴事件触发", e);
+      console.log("剪贴板数据:", e.clipboardData);
+
       if (e.clipboardData && e.clipboardData.files.length > 0) {
         const files = Array.from(e.clipboardData.files);
+        console.log("粘贴的文件:", files);
+
         const imageFiles = files.filter(isImageFile);
+        console.log("过滤后的图片文件:", imageFiles);
 
         if (imageFiles.length > 0) {
           setImages(prev => [...prev, ...imageFiles]);
@@ -50,7 +56,11 @@ const ImageSplicingTool: React.FC = () => {
           if (activeTab === "upload" && images.length === 0) {
             setActiveTab("edit");
           }
+        } else {
+          console.log("未发现有效图片文件");
         }
+      } else {
+        console.log("剪贴板中没有文件数据");
       }
     };
 
@@ -255,7 +265,7 @@ const ImageSplicingTool: React.FC = () => {
           </Button>
         </div>
         <p className="text-gray-400">
-          快速处理图片，一键复制粘贴，解决公众号海外图片失效问题。适用于公众号写作、内容创作等场景。
+          快速拼接图片，一键复制粘贴，解决粘贴海外图片失效问题。适用于公众号写作、内容创作等场景。
         </p>
       </div>
 
@@ -429,14 +439,16 @@ const ImageSplicingTool: React.FC = () => {
           </div>
 
           <div className="bg-tool-surface p-4 rounded-lg border border-tool-border/30 shadow-lg">
-            <div className="text-xs text-gray-300 flex items-center justify-between">
-              <span className="text-tool-primary/80 font-medium">快捷键: </span>
+            <div className="text-sm text-white flex items-center justify-between">
+              <span className="text-tool-primary font-medium">快捷键: </span>
               <div className="flex space-x-4">
-                <span className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-border text-tool-primary text-xs">Ctrl+V</kbd> 粘贴图片
+                <span className="flex items-center gap-1 bg-tool-primary/10 px-2 py-1 rounded border border-tool-primary/20">
+                  <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-primary text-tool-primary text-xs font-bold">Ctrl+V</kbd>
+                  <span className="text-white">粘贴图片</span>
                 </span>
-                <span className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-border text-tool-primary text-xs">Ctrl+C</kbd> 复制结果
+                <span className="flex items-center gap-1 bg-tool-primary/10 px-2 py-1 rounded border border-tool-primary/20">
+                  <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-primary text-tool-primary text-xs font-bold">Ctrl+C</kbd>
+                  <span className="text-white">复制结果</span>
                 </span>
               </div>
             </div>
