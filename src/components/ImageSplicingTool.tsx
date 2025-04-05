@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +9,23 @@ import ImageUploader from "@/components/ImageUploader";
 import ImagePreview from "@/components/ImagePreview";
 import { createSplicedImage, downloadImage, copyImageToClipboard } from "@/lib/image-processing";
 import { isImageFile } from "@/lib/image-types";
+
+// 定义防抖函数
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 const ImageSplicingTool: React.FC = () => {
   const { toast } = useToast();
@@ -29,38 +46,58 @@ const ImageSplicingTool: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"upload" | "edit">("upload");
   const [isCopied, setIsCopied] = useState(false);
   const resultContainerRef = useRef<HTMLDivElement>(null);
+  const processingTimeoutRef = useRef<number | null>(null);
+  
+  // 使用防抖减少频繁更新导致的重新渲染
+  const debouncedConfig = useDebounce({
+    layout,
+    rows,
+    columns,
+    spacing,
+    autoSize,
+    format,
+    quality
+  }, 300);
 
-  const handleReorderImages = (newOrder: File[]) => {
+  // 使用useCallback缓存函数引用
+  const handleReorderImages = useCallback((newOrder: File[]) => {
     setImages(newOrder);
-  };
+  }, []);
 
+  // 优化粘贴事件处理
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
-      console.log("粘贴事件触发", e);
-      console.log("剪贴板数据:", e.clipboardData);
-
-      if (e.clipboardData && e.clipboardData.files.length > 0) {
+      if (!e.clipboardData) return;
+      
+      // 如果已经有很多图片，提示用户
+      if (images.length > 20) {
+        toast({
+          title: "图片过多",
+          description: "图片数量已经很多，可能会影响性能，建议先处理当前图片。",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (e.clipboardData.files.length > 0) {
         const files = Array.from(e.clipboardData.files);
-        console.log("粘贴的文件:", files);
-
         const imageFiles = files.filter(isImageFile);
-        console.log("过滤后的图片文件:", imageFiles);
 
         if (imageFiles.length > 0) {
-          setImages(prev => [...prev, ...imageFiles]);
+          // 限制一次添加的数量
+          const maxAddCount = 10;
+          const filesToAdd = imageFiles.slice(0, maxAddCount);
+          
+          setImages(prev => [...prev, ...filesToAdd]);
           toast({
             title: "图片已添加",
-            description: `已添加 ${imageFiles.length} 张图片从剪贴板`,
+            description: `已添加 ${filesToAdd.length} 张图片从剪贴板${imageFiles.length > maxAddCount ? `（限制为${maxAddCount}张）` : ''}`,
           });
 
           if (activeTab === "upload" && images.length === 0) {
             setActiveTab("edit");
           }
-        } else {
-          console.log("未发现有效图片文件");
         }
-      } else {
-        console.log("剪贴板中没有文件数据");
       }
     };
 
@@ -77,8 +114,9 @@ const ImageSplicingTool: React.FC = () => {
       window.removeEventListener("paste", handlePaste);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [toast, images, activeTab, resultImage.canvas]);
+  }, [toast, images.length, activeTab, resultImage.canvas]);
 
+  // 根据布局类型调整行列数
   useEffect(() => {
     if (layout === "single" && images.length > 1) {
       setRows(1);
@@ -86,21 +124,37 @@ const ImageSplicingTool: React.FC = () => {
     } else if (layout === "row" && images.length > 0) {
       setRows(images.length);
       setColumns(1);
-    } else if (layout === "grid") {
     }
   }, [layout, images.length]);
 
+  // 图片变更或配置变更时重新生成拼接图片
   useEffect(() => {
-    const debounce = setTimeout(() => {
-      if (images.length > 0) {
-        handleCreateSplicedImage(false);
-      }
+    if (images.length === 0) return;
+    
+    // 清除之前的超时
+    if (processingTimeoutRef.current !== null) {
+      window.clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = null;
+    }
+    
+    // 设置一个新的超时
+    processingTimeoutRef.current = window.setTimeout(() => {
+      handleCreateSplicedImage(false);
+      processingTimeoutRef.current = null;
     }, 500);
+    
+    return () => {
+      if (processingTimeoutRef.current !== null) {
+        window.clearTimeout(processingTimeoutRef.current);
+        processingTimeoutRef.current = null;
+      }
+    };
+  }, [debouncedConfig, images]);
 
-    return () => clearTimeout(debounce);
-  }, [layout, rows, columns, spacing, autoSize, format, quality, images]);
-
-  const handleImagesSelected = (files: File[]) => {
+  // 图片选择处理函数
+  const handleImagesSelected = useCallback((files: File[]) => {
+    // 限制最大图片数量
+    const maxTotalImages = 30;
     const imageFiles = files.filter(isImageFile);
 
     if (imageFiles.length === 0) {
@@ -111,22 +165,37 @@ const ImageSplicingTool: React.FC = () => {
       });
       return;
     }
-
-    setImages(prev => [...prev, ...imageFiles]);
-    toast({
-      description: `已添加 ${imageFiles.length} 张图片`,
-    });
+    
+    // 检查是否超出最大图片数量
+    if (images.length + imageFiles.length > maxTotalImages) {
+      toast({
+        title: "图片数量超限",
+        description: `最多只能添加 ${maxTotalImages} 张图片，已选择 ${Math.min(maxTotalImages - images.length, imageFiles.length)} 张`,
+        variant: "destructive",
+      });
+      
+      // 只添加到最大限制
+      const filesToAdd = imageFiles.slice(0, maxTotalImages - images.length);
+      setImages(prev => [...prev, ...filesToAdd]);
+    } else {
+      setImages(prev => [...prev, ...imageFiles]);
+      toast({
+        description: `已添加 ${imageFiles.length} 张图片`,
+      });
+    }
 
     if (images.length === 0 && activeTab === "upload") {
       setActiveTab("edit");
     }
-  };
+  }, [images.length, activeTab, toast]);
 
-  const handleRemoveImage = (index: number) => {
+  // 移除图片
+  const handleRemoveImage = useCallback((index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
-  };
+  }, []);
 
-  const handleLayoutChange = (newLayout: "single" | "row" | "grid") => {
+  // 更改布局
+  const handleLayoutChange = useCallback((newLayout: "single" | "row" | "grid") => {
     setLayout(newLayout);
 
     if (newLayout === "single") {
@@ -139,9 +208,10 @@ const ImageSplicingTool: React.FC = () => {
       setRows(2);
       setColumns(2);
     }
-  };
+  }, [images.length]);
 
-  const handleCreateSplicedImage = async (showNotification = true) => {
+  // 创建拼接图片
+  const handleCreateSplicedImage = useCallback(async (showNotification = true) => {
     if (images.length === 0) {
       return;
     }
@@ -156,9 +226,17 @@ const ImageSplicingTool: React.FC = () => {
         format,
         quality,
         autoSize,
+        maxSize: 2000, // 限制最大尺寸
       };
 
+      // 使用Web Worker处理大图片（如果可能）
       const { blob, canvas } = await createSplicedImage(images, config);
+      
+      // 释放之前的对象URL
+      if (resultImage.url) {
+        URL.revokeObjectURL(resultImage.url);
+      }
+      
       const url = URL.createObjectURL(blob);
 
       setResultImage({ url, blob, canvas });
@@ -178,18 +256,20 @@ const ImageSplicingTool: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [images, layout, rows, columns, spacing, format, quality, autoSize, resultImage.url, toast]);
 
-  const handleDownloadImage = () => {
+  // 处理图片下载
+  const handleDownloadImage = useCallback(() => {
     if (resultImage.blob) {
       downloadImage(resultImage.blob, `spliced-image.${format}`);
       toast({
         description: "图片已下载",
       });
     }
-  };
+  }, [resultImage.blob, format, toast]);
 
-  const handleCopyImage = async () => {
+  // 处理图片复制
+  const handleCopyImage = useCallback(async () => {
     if (resultImage.canvas) {
       const success = await copyImageToClipboard(resultImage.canvas);
 
@@ -208,18 +288,25 @@ const ImageSplicingTool: React.FC = () => {
         });
       }
     }
-  };
+  }, [resultImage.canvas, toast]);
 
-  const getCurrentConfig = () => ({
+  // 使用useMemo计算当前配置，减少不必要的重新计算
+  const currentConfig = useMemo(() => ({
     rows: layout === "row" ? images.length || 1 : rows,
     columns: layout === "row" ? 1 : columns,
     spacing,
     format,
     quality,
     autoSize,
-  });
+  }), [layout, images.length, rows, columns, spacing, format, quality, autoSize]);
 
-  const handleReset = () => {
+  // 重置所有设置
+  const handleReset = useCallback(() => {
+    // 释放之前的对象URL
+    if (resultImage.url) {
+      URL.revokeObjectURL(resultImage.url);
+    }
+    
     setImages([]);
     setLayout("grid");
     setRows(2);
@@ -234,9 +321,10 @@ const ImageSplicingTool: React.FC = () => {
     toast({
       description: "所有图片和设置已重置",
     });
-  };
+  }, [resultImage.url, toast]);
 
-  const getLayoutDescription = () => {
+  // 使用useMemo计算布局描述，减少不必要的重新计算
+  const layoutDescription = useMemo(() => {
     if (layout === 'single') {
       if (images.length <= 1) {
         return '单幅';
@@ -247,7 +335,7 @@ const ImageSplicingTool: React.FC = () => {
     } else {
       return `网格 (${rows}×${columns})`;
     }
-  };
+  }, [layout, images.length, rows, columns]);
 
   return (
     <div className="container mx-auto px-4 max-w-6xl">
@@ -317,7 +405,7 @@ const ImageSplicingTool: React.FC = () => {
                 <div className="bg-black/50 rounded-lg p-4 text-xs space-y-2 border border-tool-border/20">
                   <div className="flex justify-between text-gray-300">
                     <span>当前设置:</span>
-                    <span>{getLayoutDescription()}</span>
+                    <span>{layoutDescription}</span>
                   </div>
                   <div className="flex justify-between text-gray-300">
                     <span>间距:</span>

@@ -5,27 +5,58 @@ export interface SplicedImageConfig {
   format: string;
   quality: number;
   autoSize: boolean;
+  maxSize?: number;
 }
+
+const calculateOptimalSize = (img: HTMLImageElement, maxSize = 2000): { width: number, height: number } => {
+  const { width, height } = img;
+  
+  if (width <= maxSize && height <= maxSize) {
+    return { width, height };
+  }
+  
+  const aspectRatio = width / height;
+  if (width > height) {
+    return {
+      width: maxSize,
+      height: Math.floor(maxSize / aspectRatio)
+    };
+  } else {
+    return {
+      width: Math.floor(maxSize * aspectRatio),
+      height: maxSize
+    };
+  }
+};
 
 export const createSplicedImage = async (
   images: File[],
   config: SplicedImageConfig
 ): Promise<{ blob: Blob, canvas: HTMLCanvasElement }> => {
-  const { rows, columns, spacing, format, quality, autoSize } = config;
+  const { rows, columns, spacing, format, quality, autoSize, maxSize = 2000 } = config;
   
-  // Load all images
+  const imageUrls: string[] = [];
+  
   const loadedImages = await Promise.all(
     images.map((file) => {
       return new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve(img);
         img.onerror = reject;
-        img.src = URL.createObjectURL(file);
+        
+        const url = URL.createObjectURL(file);
+        imageUrls.push(url);
+        img.src = url;
       });
     })
-  );
+  ).finally(() => {
+    window.requestIdleCallback?.(() => {
+      imageUrls.forEach(url => URL.revokeObjectURL(url));
+    }) || setTimeout(() => {
+      imageUrls.forEach(url => URL.revokeObjectURL(url));
+    }, 1000);
+  });
 
-  // Handle empty images array
   if (loadedImages.length === 0) {
     const canvas = document.createElement("canvas");
     canvas.width = 400;
@@ -40,7 +71,6 @@ export const createSplicedImage = async (
         if (blob) {
           resolve({ blob, canvas });
         } else {
-          // Fallback if toBlob fails
           const defaultBlob = new Blob([], { type: `image/${format}` });
           resolve({ blob: defaultBlob, canvas });
         }
@@ -48,104 +78,116 @@ export const createSplicedImage = async (
     });
   }
 
-  // Determine layout based on mode
   let actualRows = rows;
   let actualColumns = columns;
   
-  // Special handling for single mode with multiple images (横排) - display in a single row
   if (rows === 1 && columns === 1 && loadedImages.length > 1) {
     actualRows = 1;
     actualColumns = loadedImages.length;
   }
 
-  // Calculate the maximum dimensions for each cell
+  const optimizedImages = loadedImages.map(img => {
+    const { width, height } = calculateOptimalSize(img, maxSize);
+    
+    if (width === img.width && height === img.height) {
+      return img;
+    }
+    
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const ctx = tempCanvas.getContext('2d');
+    
+    if (ctx) {
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const optimizedImg = new Image();
+      optimizedImg.src = tempCanvas.toDataURL(`image/${format}`, quality / 100);
+      
+      return new Promise<HTMLImageElement>((resolve) => {
+        optimizedImg.onload = () => resolve(optimizedImg);
+        optimizedImg.width = width;
+        optimizedImg.height = height;
+      });
+    }
+    
+    return img;
+  });
+
+  const processedImages = await Promise.all(optimizedImages);
+
   let maxWidth = 0;
   let maxHeight = 0;
 
   if (autoSize) {
-    // For autoSize mode, determine dimensions differently
-    // For each position in the grid, find the image that will go there
-    // and use its dimensions
     const imageDimensions: { width: number; height: number }[] = [];
     
-    for (let i = 0; i < loadedImages.length; i++) {
-      const img = loadedImages[i];
+    for (let i = 0; i < processedImages.length; i++) {
+      const img = processedImages[i];
       imageDimensions[i] = { width: img.width, height: img.height };
     }
 
-    // First, calculate total width and height required
     let totalWidth = 0;
     let totalHeight = 0;
     
     if (actualRows === 1) {
-      // For single row, add up all widths
       totalWidth = imageDimensions.reduce((sum, dim) => sum + dim.width, 0);
       maxHeight = Math.max(...imageDimensions.map(dim => dim.height));
       totalHeight = maxHeight;
     } else if (actualColumns === 1) {
-      // For single column, add up all heights
       totalHeight = imageDimensions.reduce((sum, dim) => sum + dim.height, 0);
       maxWidth = Math.max(...imageDimensions.map(dim => dim.width));
       totalWidth = maxWidth;
     } else {
-      // For grid layout, we need to position images more carefully
-      // First, determine dimensions of each cell
-      for (const img of loadedImages) {
+      for (const img of processedImages) {
         maxWidth = Math.max(maxWidth, img.width);
         maxHeight = Math.max(maxHeight, img.height);
       }
       
-      // Calculate total canvas dimensions
       totalWidth = maxWidth * actualColumns;
       totalHeight = maxHeight * actualRows;
     }
     
-    // Add spacing if needed
     if (spacing > 0) {
       totalWidth += (actualColumns - 1) * spacing;
       totalHeight += (actualRows - 1) * spacing;
     }
     
-    // Create canvas with calculated dimensions
     const canvas = document.createElement("canvas");
     canvas.width = totalWidth;
     canvas.height = totalHeight;
     
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) {
       throw new Error("Could not get canvas context");
     }
     
-    // Set background as transparent
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw images on canvas
     let x = 0;
     let y = 0;
     let index = 0;
     
     if (actualRows === 1) {
-      // Single row layout
-      for (let c = 0; c < Math.min(actualColumns, loadedImages.length); c++) {
-        const img = loadedImages[c];
+      for (let c = 0; c < Math.min(actualColumns, processedImages.length); c++) {
+        const img = processedImages[c];
         ctx.drawImage(img, x, (totalHeight - img.height) / 2);
         x += img.width + (c < actualColumns - 1 ? spacing : 0);
       }
     } else if (actualColumns === 1) {
-      // Single column layout
-      for (let r = 0; r < Math.min(actualRows, loadedImages.length); r++) {
-        const img = loadedImages[r];
+      for (let r = 0; r < Math.min(actualRows, processedImages.length); r++) {
+        const img = processedImages[r];
         ctx.drawImage(img, (totalWidth - img.width) / 2, y);
         y += img.height + (r < actualRows - 1 ? spacing : 0);
       }
     } else {
-      // Grid layout
       for (let r = 0; r < actualRows; r++) {
         x = 0;
         for (let c = 0; c < actualColumns; c++) {
-          if (index >= loadedImages.length) break;
+          if (index >= processedImages.length) break;
           
-          const img = loadedImages[index];
+          const img = processedImages[index];
           const cellX = x + (maxWidth - img.width) / 2;
           const cellY = y + (maxHeight - img.height) / 2;
           
@@ -158,28 +200,52 @@ export const createSplicedImage = async (
       }
     }
     
-    // Convert to desired format
-    return new Promise<{ blob: Blob, canvas: HTMLCanvasElement }>((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve({ blob, canvas });
-          } else {
-            reject(new Error("Failed to create image blob"));
+    let targetQuality = quality / 100;
+    const maxBlobSize = 5 * 1024 * 1024;
+    
+    return new Promise<{ blob: Blob, canvas: HTMLCanvasElement }>(async (resolve, reject) => {
+      try {
+        let blob = await new Promise<Blob>((res, rej) => {
+          canvas.toBlob(
+            (b) => {
+              if (b) res(b);
+              else rej(new Error("Failed to create image blob"));
+            },
+            `image/${format}`,
+            targetQuality
+          );
+        });
+        
+        if (format === 'jpeg' && blob.size > maxBlobSize) {
+          let attempts = 0;
+          while (blob.size > maxBlobSize && targetQuality > 0.5 && attempts < 3) {
+            targetQuality -= 0.1;
+            attempts++;
+            
+            blob = await new Promise<Blob>((res, rej) => {
+              canvas.toBlob(
+                (b) => {
+                  if (b) res(b);
+                  else rej(new Error("Failed to create image blob"));
+                },
+                `image/${format}`,
+                targetQuality
+              );
+            });
           }
-        },
-        `image/${format}`,
-        quality / 100
-      );
+        }
+        
+        resolve({ blob, canvas });
+      } catch (err) {
+        reject(err);
+      }
     });
   } else {
-    // For uniform size, use the dimensions of the first image for all
-    if (loadedImages.length > 0) {
-      maxWidth = loadedImages[0].width;
-      maxHeight = loadedImages[0].height;
+    if (processedImages.length > 0) {
+      maxWidth = processedImages[0].width;
+      maxHeight = processedImages[0].height;
     }
 
-    // Create canvas with appropriate dimensions
     const canvas = document.createElement("canvas");
     const totalWidth = actualColumns * maxWidth + (actualColumns - 1) * spacing;
     const totalHeight = actualRows * maxHeight + (actualRows - 1) * spacing;
@@ -187,44 +253,77 @@ export const createSplicedImage = async (
     canvas.width = totalWidth;
     canvas.height = totalHeight;
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) {
       throw new Error("Could not get canvas context");
     }
 
-    // Set background as transparent
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw images on canvas
+    const batchSize = 4;
     let index = 0;
-    for (let r = 0; r < actualRows; r++) {
-      for (let c = 0; c < actualColumns; c++) {
-        if (index >= loadedImages.length) break;
-
-        const img = loadedImages[index];
+    
+    for (let batchStart = 0; batchStart < processedImages.length; batchStart += batchSize) {
+      const batch = processedImages.slice(batchStart, batchStart + batchSize);
+      
+      for (const img of batch) {
+        const r = Math.floor(index / actualColumns);
+        const c = index % actualColumns;
+        
+        if (r >= actualRows) break;
+        
         const x = c * (maxWidth + spacing);
         const y = r * (maxHeight + spacing);
         
-        // For uniform size, resize all images to the first image's dimensions
         ctx.drawImage(img, x, y, maxWidth, maxHeight);
         
         index++;
       }
+      
+      if (batchStart + batchSize < processedImages.length) {
+        await new Promise(r => setTimeout(r, 0));
+      }
     }
 
-    // Convert to desired format
-    return new Promise<{ blob: Blob, canvas: HTMLCanvasElement }>((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve({ blob, canvas });
-          } else {
-            reject(new Error("Failed to create image blob"));
+    let targetQuality = quality / 100;
+    const maxBlobSize = 5 * 1024 * 1024;
+    
+    return new Promise<{ blob: Blob, canvas: HTMLCanvasElement }>(async (resolve, reject) => {
+      try {
+        let blob = await new Promise<Blob>((res, rej) => {
+          canvas.toBlob(
+            (b) => {
+              if (b) res(b);
+              else rej(new Error("Failed to create image blob"));
+            },
+            `image/${format}`,
+            targetQuality
+          );
+        });
+        
+        if (format === 'jpeg' && blob.size > maxBlobSize) {
+          let attempts = 0;
+          while (blob.size > maxBlobSize && targetQuality > 0.5 && attempts < 3) {
+            targetQuality -= 0.1;
+            attempts++;
+            
+            blob = await new Promise<Blob>((res, rej) => {
+              canvas.toBlob(
+                (b) => {
+                  if (b) res(b);
+                  else rej(new Error("Failed to create image blob"));
+                },
+                `image/${format}`,
+                targetQuality
+              );
+            });
           }
-        },
-        `image/${format}`,
-        quality / 100
-      );
+        }
+        
+        resolve({ blob, canvas });
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 };
@@ -242,7 +341,6 @@ export const downloadImage = (blob: Blob, filename: string) => {
 
 export const copyImageToClipboard = async (canvas: HTMLCanvasElement): Promise<boolean> => {
   try {
-    // Try the Clipboard API first (most modern browsers)
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((b) => {
         if (b) resolve(b);
@@ -250,7 +348,6 @@ export const copyImageToClipboard = async (canvas: HTMLCanvasElement): Promise<b
       });
     });
 
-    // Use the clipboard API to copy
     await navigator.clipboard.write([
       new ClipboardItem({
         [blob.type]: blob
@@ -262,35 +359,28 @@ export const copyImageToClipboard = async (canvas: HTMLCanvasElement): Promise<b
     console.error("Error copying image to clipboard:", error);
     
     try {
-      // Fallback for browsers that don't support ClipboardItem
       canvas.toBlob(async (blob) => {
         if (blob) {
           try {
-            // Create a temporary image element
             const img = document.createElement('img');
             img.src = URL.createObjectURL(blob);
             
-            // Create a temporary div for the image
             const div = document.createElement('div');
             div.contentEditable = 'true';
             div.style.position = 'fixed';
             div.style.opacity = '0';
             div.appendChild(img);
             
-            // Add to DOM, select, and try to copy
             document.body.appendChild(div);
             
-            // Select the image
             const range = document.createRange();
             range.selectNode(div);
             const selection = window.getSelection();
             selection?.removeAllRanges();
             selection?.addRange(range);
             
-            // Execute copy command
             const success = document.execCommand('copy');
             
-            // Clean up
             selection?.removeAllRanges();
             document.body.removeChild(div);
             URL.revokeObjectURL(img.src);
