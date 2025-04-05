@@ -1,14 +1,9 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+
+# 不允许爬取的目录
+Disallow: /assets/
+Disallow: /admin/
+
+# Sitemap
+Sitemap: https://picmac.example.com/sitemap.xml

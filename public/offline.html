@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片即贴 - 离线模式</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .container {
+      max-width: 500px;
+      padding: 2rem;
+      background-color: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0, 230, 230, 0.2);
+      border-radius: 12px;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      color: #00e6e6;
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    
+    p {
+      color: #ccc;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+    
+    .icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
+      border-radius: 50%;
+      background-color: rgba(0, 230, 230, 0.1);
+      border: 2px solid rgba(0, 230, 230, 0.3);
+    }
+    
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      background-color: #00e6e6;
+      color: #000;
+      font-weight: 500;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    
+    .btn:hover {
+      background-color: #00b3b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#00e6e6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+        <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+        <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+        <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+        <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+      </svg>
+    </div>
+    <h1>您处于离线状态</h1>
+    <p>看起来您的网络连接已断开。请检查您的互联网连接，然后重试。</p>
+    <p>图片即贴需要网络连接才能正常工作。一旦重新连接，您可以继续使用所有功能。</p>
+    <a href="/" class="btn">刷新页面</a>
+  </div>
+
+  <script>
+    // 检测网络恢复时自动刷新
+    window.addEventListener('online', () => {
+      window.location.reload();
+    });
+    
+    // 尝试重新连接的按钮
+    document.querySelector('.btn').addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.reload();
+    });
+  </script>
+</body>
+</html> 
