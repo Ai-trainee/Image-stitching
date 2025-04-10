@@ -85,8 +85,6 @@ export default defineConfig(({ mode }) => ({
           // 表单相关库单独打包
           'vendor-forms': ['react-hook-form', 'zod', '@hookform/resolvers'],
         },
-        // 配置chunk大小警告限制
-        chunkSizeWarningLimit: 1000,
       },
     },
     // 设置sourcemap类型
