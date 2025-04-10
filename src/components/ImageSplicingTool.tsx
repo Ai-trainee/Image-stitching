@@ -12,11 +12,11 @@ import { isImageFile } from "@/lib/image-types";
 
 const ImageSplicingTool: React.FC = () => {
   const { toast } = useToast();
-  const [layout, setLayout] = useState<"single" | "row" | "grid">("grid");
+  const [layout, setLayout] = useState<"single" | "row" | "grid">("single");
   const [rows, setRows] = useState(2);
   const [columns, setColumns] = useState(2);
   const [spacing, setSpacing] = useState(0);
-  const [autoSize, setAutoSize] = useState(true);
+  const [autoSize, setAutoSize] = useState(false);
   const [format, setFormat] = useState<string>("png");
   const [quality, setQuality] = useState(90);
   const [images, setImages] = useState<File[]>([]);
@@ -29,8 +29,24 @@ const ImageSplicingTool: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"upload" | "edit">("upload");
   const [isCopied, setIsCopied] = useState(false);
   const resultContainerRef = useRef<HTMLDivElement>(null);
+  const [history, setHistory] = useState<{images: File[], layout: "single" | "row" | "grid", autoSize: boolean}[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const addToHistory = (newImages: File[]) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    
+    newHistory.push({
+      images: [...newImages],
+      layout,
+      autoSize
+    });
+    
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
 
   const handleReorderImages = (newOrder: File[]) => {
+    addToHistory(newOrder);
     setImages(newOrder);
   };
 
@@ -47,10 +63,12 @@ const ImageSplicingTool: React.FC = () => {
         console.log("过滤后的图片文件:", imageFiles);
 
         if (imageFiles.length > 0) {
-          setImages(prev => [...prev, ...imageFiles]);
+          const newImages = [...images, ...imageFiles];
+          addToHistory(newImages);
+          setImages(newImages);
           toast({
-            title: "图片已添加",
-            description: `已添加 ${imageFiles.length} 张图片从剪贴板`,
+            title: "已添加图片",
+            description: `成功添加 ${imageFiles.length} 张图片`,
           });
 
           if (activeTab === "upload" && images.length === 0) {
@@ -68,6 +86,10 @@ const ImageSplicingTool: React.FC = () => {
       if (e.ctrlKey && e.key === 'c' && resultImage.canvas) {
         handleCopyImage();
       }
+      
+      if (e.ctrlKey && e.key === 'z') {
+        handleUndo();
+      }
     };
 
     window.addEventListener("paste", handlePaste);
@@ -77,7 +99,7 @@ const ImageSplicingTool: React.FC = () => {
       window.removeEventListener("paste", handlePaste);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [toast, images, activeTab, resultImage.canvas]);
+  }, [toast, images, activeTab, resultImage.canvas, history, historyIndex, layout, autoSize]);
 
   useEffect(() => {
     if (layout === "single" && images.length > 1) {
@@ -89,6 +111,14 @@ const ImageSplicingTool: React.FC = () => {
     } else if (layout === "grid") {
     }
   }, [layout, images.length]);
+
+  // 初始化历史记录
+  useEffect(() => {
+    if (historyIndex === -1 && images.length > 0) {
+      setHistory([{ images, layout, autoSize }]);
+      setHistoryIndex(0);
+    }
+  }, [historyIndex, images, layout, autoSize]);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -105,16 +135,19 @@ const ImageSplicingTool: React.FC = () => {
 
     if (imageFiles.length === 0) {
       toast({
-        title: "无效文件",
+        title: "格式错误",
         description: "请选择支持的图片文件格式",
         variant: "destructive",
       });
       return;
     }
 
-    setImages(prev => [...prev, ...imageFiles]);
+    const newImages = [...images, ...imageFiles];
+    addToHistory(newImages);
+    setImages(newImages);
     toast({
-      description: `已添加 ${imageFiles.length} 张图片`,
+      title: "已添加图片",
+      description: `成功添加 ${imageFiles.length} 张图片`,
     });
 
     if (images.length === 0 && activeTab === "upload") {
@@ -123,7 +156,9 @@ const ImageSplicingTool: React.FC = () => {
   };
 
   const handleRemoveImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    const newImages = images.filter((_, i) => i !== index);
+    addToHistory(newImages);
+    setImages(newImages);
   };
 
   const handleLayoutChange = (newLayout: "single" | "row" | "grid") => {
@@ -165,14 +200,15 @@ const ImageSplicingTool: React.FC = () => {
 
       if (showNotification) {
         toast({
-          description: "拼接图片已创建，Ctrl+C 复制",
+          title: "拼接成功",
+          description: "图片已创建，按Ctrl+C复制或点击复制按钮",
         });
       }
     } catch (error) {
       console.error("Error creating spliced image:", error);
       toast({
-        title: "出错了",
-        description: "创建拼接图片时出错",
+        title: "处理失败",
+        description: "创建拼接图片时出错，请重试",
         variant: "destructive",
       });
     } finally {
@@ -184,7 +220,8 @@ const ImageSplicingTool: React.FC = () => {
     if (resultImage.blob) {
       downloadImage(resultImage.blob, `spliced-image.${format}`);
       toast({
-        description: "图片已下载",
+        title: "已下载",
+        description: "图片已保存到您的下载文件夹",
       });
     }
   };
@@ -196,14 +233,15 @@ const ImageSplicingTool: React.FC = () => {
       if (success) {
         setIsCopied(true);
         toast({
-          description: "图片已复制到剪贴板",
+          title: "已复制",
+          description: "图片已复制到剪贴板，可直接粘贴使用",
         });
 
         setTimeout(() => setIsCopied(false), 2000);
       } else {
         toast({
           title: "复制失败",
-          description: "请使用右键菜单或 Ctrl+C 复制",
+          description: "请点击复制按钮或使用右键菜单复制",
           variant: "destructive",
         });
       }
@@ -221,18 +259,19 @@ const ImageSplicingTool: React.FC = () => {
 
   const handleReset = () => {
     setImages([]);
-    setLayout("grid");
+    setLayout("single");
     setRows(2);
     setColumns(2);
     setSpacing(0);
-    setAutoSize(true);
+    setAutoSize(false);
     setFormat("png");
     setQuality(90);
     setResultImage({ url: null, blob: null, canvas: null });
     setActiveTab("upload");
 
     toast({
-      description: "所有图片和设置已重置",
+      title: "已重置",
+      description: "所有图片和设置已恢复到初始状态",
     });
   };
 
@@ -246,6 +285,21 @@ const ImageSplicingTool: React.FC = () => {
       return `单列 (${rows} 张图片)`;
     } else {
       return `网格 (${rows}×${columns})`;
+    }
+  };
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      setHistoryIndex(historyIndex - 1);
+      setImages(prevState.images);
+      setLayout(prevState.layout);
+      setAutoSize(prevState.autoSize);
+      
+      toast({
+        title: "已撤销",
+        description: "成功撤销上一步操作",
+      });
     }
   };
 
@@ -449,6 +503,10 @@ const ImageSplicingTool: React.FC = () => {
                 <span className="flex items-center gap-1 bg-tool-primary/10 px-2 py-1 rounded border border-tool-primary/20">
                   <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-primary text-tool-primary text-xs font-bold">Ctrl+C</kbd>
                   <span className="text-white">复制结果</span>
+                </span>
+                <span className="flex items-center gap-1 bg-tool-primary/10 px-2 py-1 rounded border border-tool-primary/20">
+                  <kbd className="px-1.5 py-0.5 bg-black rounded border border-tool-primary text-tool-primary text-xs font-bold">Ctrl+Z</kbd>
+                  <span className="text-white">撤销操作</span>
                 </span>
               </div>
             </div>
