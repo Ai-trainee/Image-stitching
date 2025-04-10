@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Download, Check } from "lucide-react";
+import { Copy, Download, Check, Plus, RefreshCw } from "lucide-react";
 import LayoutOptions from "@/components/LayoutOptions";
 import OptionsPanel from "@/components/OptionsPanel";
 import ImageUploader from "@/components/ImageUploader";
@@ -31,6 +31,9 @@ const ImageSplicingTool: React.FC = () => {
   const resultContainerRef = useRef<HTMLDivElement>(null);
   const [history, setHistory] = useState<{images: File[], layout: "single" | "row" | "grid", autoSize: boolean}[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const previewAreaRef = useRef<HTMLDivElement>(null);
 
   const addToHistory = (newImages: File[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -303,6 +306,39 @@ const ImageSplicingTool: React.FC = () => {
     }
   };
 
+  const handlePreviewUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      handleImagesSelected(files);
+    }
+  };
+
+  const handlePreviewDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handlePreviewDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handlePreviewDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files);
+      handleImagesSelected(files);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 max-w-6xl">
       <div className="mb-8">
@@ -408,15 +444,31 @@ const ImageSplicingTool: React.FC = () => {
                   variant="outline"
                   size="sm"
                   className="text-tool-primary border-tool-border/50 bg-black/60 hover:bg-tool-primary/10 hover:border-tool-primary h-8"
+                  onClick={handlePreviewUploadClick}
+                >
+                  <Plus size={14} className="mr-1.5" />
+                  添加图片
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-tool-primary border-tool-border/50 bg-black/60 hover:bg-tool-primary/10 hover:border-tool-primary h-8"
                   onClick={() => handleCreateSplicedImage(true)}
                   disabled={isProcessing || images.length === 0}
                 >
+                  <RefreshCw size={14} className="mr-1.5" />
                   {isProcessing ? "处理中..." : "刷新预览"}
                 </Button>
               </div>
             </div>
 
-            <div className="relative border border-tool-border/50 rounded-lg overflow-hidden mb-4 shadow-[0_0_15px_rgba(0,230,230,0.1)]">
+            <div 
+              className="relative border border-tool-border/50 rounded-lg overflow-hidden mb-4 shadow-[0_0_15px_rgba(0,230,230,0.1)]"
+              ref={previewAreaRef}
+              onDragOver={handlePreviewDragOver}
+              onDragLeave={handlePreviewDragLeave}
+              onDrop={handlePreviewDrop}
+            >
               {images.length > 0 ? (
                 <div
                   ref={resultContainerRef}
@@ -440,18 +492,39 @@ const ImageSplicingTool: React.FC = () => {
                       <div className="w-10 h-10 border-2 border-tool-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
                   )}
+                  
+                  {isDragging && (
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center flex-col">
+                      <div className="w-16 h-16 mb-5 text-tool-primary opacity-80">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </div>
+                      <p className="text-tool-primary text-lg font-semibold">释放添加图片</p>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center bg-black/50 border border-tool-border/30 rounded-lg p-10 h-[340px]">
-                  <div className="w-16 h-16 mb-5 text-tool-primary/30 opacity-80">
+                <div className={`flex flex-col items-center justify-center bg-black/50 border border-tool-border/30 rounded-lg p-10 h-[340px] transition-all ${isDragging ? "border-tool-primary/70 bg-tool-primary/5" : ""}`}>
+                  <div className={`w-16 h-16 mb-5 transition-colors ${isDragging ? "text-tool-primary/60" : "text-tool-primary/30"} opacity-80`}>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <p className="text-gray-400 mb-4">暂无图片，请先上传</p>
+                  <p className={`text-gray-400 mb-4 transition-colors ${isDragging ? "text-tool-primary" : ""}`}>
+                    {isDragging ? "释放鼠标上传图片" : "拖拽或点击上传图片"}
+                  </p>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.svg,.ico,.bmp"
+                    onChange={handleFileInputChange}
+                    multiple
+                  />
                   <Button
-                    onClick={() => setActiveTab("upload")}
-                    className="bg-tool-primary/10 border border-tool-primary/30 text-tool-primary hover:bg-tool-primary/20 hover:border-tool-primary transition-all"
+                    onClick={handlePreviewUploadClick}
+                    className={`bg-tool-primary/10 border border-tool-primary/30 text-tool-primary hover:bg-tool-primary/20 hover:border-tool-primary transition-all ${isDragging ? "bg-tool-primary/20 border-tool-primary/50" : ""}`}
                   >
                     上传图片
                   </Button>
