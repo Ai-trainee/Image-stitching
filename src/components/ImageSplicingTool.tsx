@@ -12,6 +12,7 @@ import { isImageFile } from "@/lib/image-types";
 
 const ImageSplicingTool: React.FC = () => {
   const { toast } = useToast();
+  const MAX_IMAGES = 20; // 添加最大图片数量限制
   const [layout, setLayout] = useState<"single" | "row" | "grid">("single");
   const [rows, setRows] = useState(2);
   const [columns, setColumns] = useState(2);
@@ -29,21 +30,22 @@ const ImageSplicingTool: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"upload" | "edit">("upload");
   const [isCopied, setIsCopied] = useState(false);
   const resultContainerRef = useRef<HTMLDivElement>(null);
-  const [history, setHistory] = useState<{images: File[], layout: "single" | "row" | "grid", autoSize: boolean}[]>([]);
+  const [history, setHistory] = useState<{ images: File[], layout: "single" | "row" | "grid", autoSize: boolean }[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [isDraggingForUpload, setIsDraggingForUpload] = useState(false);
+  const [isDraggingInPreview, setIsDraggingInPreview] = useState(false);
   const previewAreaRef = useRef<HTMLDivElement>(null);
 
   const addToHistory = (newImages: File[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
-    
+
     newHistory.push({
       images: [...newImages],
       layout,
       autoSize
     });
-    
+
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
   };
@@ -89,7 +91,7 @@ const ImageSplicingTool: React.FC = () => {
       if (e.ctrlKey && e.key === 'c' && resultImage.canvas) {
         handleCopyImage();
       }
-      
+
       if (e.ctrlKey && e.key === 'z') {
         handleUndo();
       }
@@ -145,9 +147,21 @@ const ImageSplicingTool: React.FC = () => {
       return;
     }
 
-    const newImages = [...images, ...imageFiles];
-    addToHistory(newImages);
-    setImages(newImages);
+    // 检查是否超出最大数量限制
+    if (images.length + imageFiles.length > MAX_IMAGES) {
+      toast({
+        title: "超出限制",
+        description: `最多只能添加 ${MAX_IMAGES} 张图片`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 移除重复图片检测逻辑，允许添加重复图片
+    const finalImages = [...images, ...imageFiles];
+    addToHistory(finalImages);
+    setImages(finalImages);
+
     toast({
       title: "已添加图片",
       description: `成功添加 ${imageFiles.length} 张图片`,
@@ -298,7 +312,7 @@ const ImageSplicingTool: React.FC = () => {
       setImages(prevState.images);
       setLayout(prevState.layout);
       setAutoSize(prevState.autoSize);
-      
+
       toast({
         title: "已撤销",
         description: "成功撤销上一步操作",
@@ -308,6 +322,7 @@ const ImageSplicingTool: React.FC = () => {
 
   const handlePreviewUploadClick = () => {
     if (fileInputRef.current) {
+      fileInputRef.current.value = '';
       fileInputRef.current.click();
     }
   };
@@ -316,23 +331,38 @@ const ImageSplicingTool: React.FC = () => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
       handleImagesSelected(files);
+
+      e.target.value = '';
     }
   };
 
   const handlePreviewDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    // 如果已有图片，显示警告但不允许放置
+    if (images.length > 0) {
+      e.preventDefault();
+      setIsDraggingInPreview(true);
+      return;
+    }
     e.preventDefault();
-    setIsDragging(true);
+    setIsDraggingForUpload(true);
   };
 
   const handlePreviewDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setIsDragging(false);
+    setIsDraggingForUpload(false);
+    setIsDraggingInPreview(false);
   };
 
   const handlePreviewDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setIsDragging(false);
-    
+    setIsDraggingForUpload(false);
+    setIsDraggingInPreview(false);
+
+    // 如果已有图片，完全禁用放置功能
+    if (images.length > 0) {
+      return;
+    }
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files);
       handleImagesSelected(files);
@@ -341,6 +371,15 @@ const ImageSplicingTool: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 max-w-6xl">
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.svg,.ico,.bmp"
+        onChange={handleFileInputChange}
+        multiple
+      />
+
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-tool-primary bg-clip-text text-transparent">
@@ -462,7 +501,7 @@ const ImageSplicingTool: React.FC = () => {
               </div>
             </div>
 
-            <div 
+            <div
               className="relative border border-tool-border/50 rounded-lg overflow-hidden mb-4 shadow-[0_0_15px_rgba(0,230,230,0.1)]"
               ref={previewAreaRef}
               onDragOver={handlePreviewDragOver}
@@ -492,39 +531,31 @@ const ImageSplicingTool: React.FC = () => {
                       <div className="w-10 h-10 border-2 border-tool-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
                   )}
-                  
-                  {isDragging && (
-                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center flex-col">
-                      <div className="w-16 h-16 mb-5 text-tool-primary opacity-80">
+
+                  {isDraggingInPreview && (
+                    <div className="absolute inset-0 bg-red-500/20 backdrop-blur-sm flex items-center justify-center flex-col">
+                      <div className="w-16 h-16 mb-5 text-red-500 opacity-80">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                       </div>
-                      <p className="text-tool-primary text-lg font-semibold">释放添加图片</p>
+                      <p className="text-white text-lg font-semibold">请使用添加图片按钮</p>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className={`flex flex-col items-center justify-center bg-black/50 border border-tool-border/30 rounded-lg p-10 h-[340px] transition-all ${isDragging ? "border-tool-primary/70 bg-tool-primary/5" : ""}`}>
-                  <div className={`w-16 h-16 mb-5 transition-colors ${isDragging ? "text-tool-primary/60" : "text-tool-primary/30"} opacity-80`}>
+                <div className={`flex flex-col items-center justify-center bg-black/50 border border-tool-border/30 rounded-lg p-10 h-[340px] transition-all ${isDraggingForUpload ? "border-tool-primary/70 bg-tool-primary/5" : ""}`}>
+                  <div className={`w-16 h-16 mb-5 transition-colors ${isDraggingForUpload ? "text-tool-primary/60" : "text-tool-primary/30"} opacity-80`}>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <p className={`text-gray-400 mb-4 transition-colors ${isDragging ? "text-tool-primary" : ""}`}>
-                    {isDragging ? "释放鼠标上传图片" : "拖拽或点击上传图片"}
+                  <p className={`text-gray-400 mb-4 transition-colors ${isDraggingForUpload ? "text-tool-primary" : ""}`}>
+                    {isDraggingForUpload ? "释放鼠标上传图片" : "拖拽或点击上传图片"}
                   </p>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.svg,.ico,.bmp"
-                    onChange={handleFileInputChange}
-                    multiple
-                  />
                   <Button
                     onClick={handlePreviewUploadClick}
-                    className={`bg-tool-primary/10 border border-tool-primary/30 text-tool-primary hover:bg-tool-primary/20 hover:border-tool-primary transition-all ${isDragging ? "bg-tool-primary/20 border-tool-primary/50" : ""}`}
+                    className={`bg-tool-primary/10 border border-tool-primary/30 text-tool-primary hover:bg-tool-primary/20 hover:border-tool-primary transition-all ${isDraggingForUpload ? "bg-tool-primary/20 border-tool-primary/50" : ""}`}
                   >
                     上传图片
                   </Button>
@@ -534,7 +565,12 @@ const ImageSplicingTool: React.FC = () => {
 
             <div className="flex justify-between items-center">
               <div className="text-xs text-gray-400">
-                {resultImage.url && `格式: ${format.toUpperCase()}${format !== 'png' ? ` · 质量: ${quality}%` : ''}`}
+                {resultImage.url && (
+                  <>
+                    <span>已添加: {images.length}/{MAX_IMAGES} 张图片</span>
+                    {` · 格式: ${format.toUpperCase()}${format !== 'png' ? ` · 质量: ${quality}%` : ''}`}
+                  </>
+                )}
               </div>
 
               <div className="flex space-x-3">
