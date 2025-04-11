@@ -12,7 +12,7 @@ import { isImageFile } from "@/lib/image-types";
 
 const ImageSplicingTool: React.FC = () => {
   const { toast } = useToast();
-  const MAX_IMAGES = 20; // 添加最大图片数量限制
+  const MAX_IMAGES = 40; // 添加最大图片数量限制
   const [layout, setLayout] = useState<"single" | "row" | "grid">("single");
   const [rows, setRows] = useState(2);
   const [columns, setColumns] = useState(2);
