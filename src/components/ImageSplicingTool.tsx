@@ -355,7 +355,7 @@ const ImageSplicingTool: React.FC = () => {
           </Button>
         </div>
         <p className="text-gray-400">
-          快速拼接图片，一键复制粘贴，解决粘贴海外图片失效问题。适用于公众号写作、内容创作等场景。
+          快速拼接图片，一键复制粘贴。
         </p>
       </div>
 
