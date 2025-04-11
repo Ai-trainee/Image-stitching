@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import socialMediaConfig from '@/lib/socialMediaConfig';
 
 // 弹窗组件
 interface PopupProps {
@@ -166,8 +167,59 @@ const iconLinks = [
     }
 ];
 
-// 暴露文字链接，方便在导航栏中使用
-export { textLinks };
+// 根据配置筛选链接
+const filteredTextLinks = textLinks.filter(link => {
+    // 全局设置为不显示，则一律不显示
+    if (!socialMediaConfig.showSocialLinks) return false;
+
+    // 查找配置中的设置
+    const config = socialMediaConfig.text[link.name];
+
+    // 没有配置则保留默认显示
+    if (!config) return true;
+
+    // 返回配置中的显示设置
+    return config.show;
+}).map(link => {
+    // 复制一份原链接
+    const newLink = { ...link };
+
+    // 检查是否有自定义URL
+    const config = socialMediaConfig.text[link.name];
+    if (config && config.customUrl) {
+        newLink.url = config.customUrl;
+    }
+
+    return newLink;
+});
+
+const filteredIconLinks = iconLinks.filter(link => {
+    // 全局设置为不显示，则一律不显示
+    if (!socialMediaConfig.showSocialLinks) return false;
+
+    // 查找配置中的设置
+    const config = socialMediaConfig.icons[link.name];
+
+    // 没有配置则保留默认显示
+    if (!config) return true;
+
+    // 返回配置中的显示设置
+    return config.show;
+}).map(link => {
+    // 复制一份原链接
+    const newLink = { ...link };
+
+    // 检查是否有自定义URL
+    const config = socialMediaConfig.icons[link.name];
+    if (config && config.customUrl) {
+        newLink.url = config.customUrl;
+    }
+
+    return newLink;
+});
+
+// 暴露经过配置筛选后的文字链接
+export { filteredTextLinks as textLinks };
 
 const SocialLinks: React.FC<{
     className?: string,
@@ -192,7 +244,7 @@ const SocialLinks: React.FC<{
         }, [mpLinkClicked]);
 
         // 处理公众号点击事件
-        const updatedIconLinks = iconLinks.map(link => {
+        const updatedIconLinks = filteredIconLinks.map(link => {
             if (link.name === '公众号') {
                 return {
                     ...link,
@@ -202,6 +254,11 @@ const SocialLinks: React.FC<{
             return link;
         });
 
+        // 如果全局设置为不显示社交链接，则不渲染任何内容
+        if (!socialMediaConfig.showSocialLinks) {
+            return null;
+        }
+
         return (
             <div className={cn("transition-all duration-300", className)}>
                 {/* 社交媒体链接 */}
@@ -210,7 +267,7 @@ const SocialLinks: React.FC<{
                     variant === 'vertical' ? "flex-col" : "flex-wrap justify-center"
                 )}>
                     {/* 有条件地渲染文字链接 */}
-                    {showTextLinks && textLinks.map((social) => (
+                    {showTextLinks && filteredTextLinks.map((social) => (
                         <div key={social.name} className="relative group">
                             <a
                                 href={social.url}
@@ -251,7 +308,7 @@ const SocialLinks: React.FC<{
                     ))}
                 </div>
 
-                {/* 公众号弹窗 */}
+                {/* 弹窗 */}
                 {activePopup === 'mp' && (
                     <QRPopup
                         title="ATrAINEE公众号"
